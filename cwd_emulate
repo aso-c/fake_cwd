@@ -11,21 +11,6 @@
 
 #pragma once
 
-/*
- * Предлагаемые команды:
- *    -	sd - main command for manipulation with SD-caed
- *	+ m, mount	- mount sdcard, options: [<card>] [<mountpoint>];
- *	+ u, umount	- unmount sdcard, options: [<card>|<mountpiont>];
- *	+ pwd		- get current directory name, w/o options;
- *	+ cd		- change a current directory
- *	+ ls, dir	- list of files in sdcard, options: [<file pattern>];
- *	+ cd <dir>	- change dir;
- *	+ cat <file>	- print file to console
- *	+ type [<file>]	- type text to cinsile and store it in the file optionally
- *	+ cp, copy	- copy file, options: [<src file>|<dest file>];
- *	+ mv, move	- move or rename file, options: [<src file>|<dest file>];
- */
-
 
 #ifndef __cplusplus
 #error "The sdcard_ctrl file usable in C++ projects only."

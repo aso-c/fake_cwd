@@ -58,6 +58,12 @@ namespace fs	//-----------------------------------------------------------------
 	esp_err_t change_dir(const char path[]);
 	char* clearbuff() {operative_path_buff[0] = '\0'; return operative_path_buff;};	// clear operative path buffer - set it's value to ""
 
+	/// @brief Path validation - whatever the path exist or not -
+	/// any subpath is a valid existing path
+	/// @note method can modify fake_cwd::operative_path_buf
+	bool valid_path(const char[]);
+
+
     private:
 
 	char* const pwd;	// pointer to cwd buffer

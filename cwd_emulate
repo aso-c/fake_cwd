@@ -1,0 +1,88 @@
+/*!
+ * @brief Emulate "current directory" path for operating with file system
+ * Header Include file
+ * 	@file	cwd_emulate
+ *	@author	(Solomatov A.A. (aso)
+ *	Created	27.04.2024
+ *	Version	0.3
+ */
+
+
+
+#pragma once
+
+/*
+ * Предлагаемые команды:
+ *    -	sd - main command for manipulation with SD-caed
+ *	+ m, mount	- mount sdcard, options: [<card>] [<mountpoint>];
+ *	+ u, umount	- unmount sdcard, options: [<card>|<mountpiont>];
+ *	+ pwd		- get current directory name, w/o options;
+ *	+ cd		- change a current directory
+ *	+ ls, dir	- list of files in sdcard, options: [<file pattern>];
+ *	+ cd <dir>	- change dir;
+ *	+ cat <file>	- print file to console
+ *	+ type [<file>]	- type text to cinsile and store it in the file optionally
+ *	+ cp, copy	- copy file, options: [<src file>|<dest file>];
+ *	+ mv, move	- move or rename file, options: [<src file>|<dest file>];
+ */
+
+
+#ifndef __cplusplus
+#error "The sdcard_ctrl file usable in C++ projects only."
+#endif
+
+
+
+// if path - is absolute path
+inline
+bool absolute_path(const char path[]) { return (path[0] == '/'); };
+
+
+namespace fs	//-----------------------------------------------------------------------------------------------------
+{
+
+    class CWD_emulating
+    {
+    public:
+	CWD_emulating(char cwdbuff[], size_t cwdbufflen):
+	    pwd(cwdbuff), pwd_bufflen(cwdbufflen) {/*esp_log_level_set("CWD_emulating:", ESP_LOG_DEBUG);*//* for debug purposes */};
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnonnull"
+	// get current dir (if path == NULL or "") or generate fullpath for sended path
+	// absent trailing slash in returned string is guaranteed
+	// return current pwd (current dir) only
+	char* get();
+	// return full path appling current dir
+	char* get(const char path[]) { ESP_LOGD("CWD_emulating:", "%s: \"path\" argument is %s", __func__, path);
+	    ESP_LOGD("CWD_emulating:", "%s: \"len\" argument is zero",  __func__);
+	    return get(path, strlen(path));
+	};
+	// return full path appling current dir, use desired part of the passed path
+	char* get(const char path[], size_t);
+#pragma GCC diagnostic pop
+	// raw get path with current dir:
+	// only concatenate path with current dir,
+	// not processing output with realpath().
+	char* raw_get(const char path[] = nullptr);
+	// get current operative path buffer - previous stored path on it
+	char* get_current() {return operative_path_buff;};
+	// the pwd dir is root?
+	bool pwd_is_root() { return (strcmp(pwd, "/") == 0)? true: false;};
+	// change cwd dir
+	esp_err_t change_dir(const char path[]);
+	char* clearbuff() {operative_path_buff[0] = '\0'; return operative_path_buff;};	// clear operative path buffer - set it's value to ""
+
+    private:
+
+	char* const pwd;	// pointer to cwd buffer
+	const size_t pwd_bufflen;
+	static char operative_path_buff[PATH_MAX];	// temporary buffer for file fullpath composing
+
+    }; /* CWD_emulating */
+
+
+}; //--[ namespace fs ]------------------------------------------------------------------------------------------------
+
+
+//--[ cwd_emulate ]----------------------------------------------------------------------------------------------------

@@ -242,10 +242,10 @@ bool CWD_emulating::valid_path(const char path[])
 	base--;	// set base to a last slash in the path
     else
     {
-	if (stat(/*fake_cwd.*/get(path), &st) == 0)
+	if (stat(get(path), &st) == 0)
 	    if (!S_ISDIR(st.st_mode))	// ESP_LOGD("Device::valid_path", "###!!! the path basename - is empty, test the path \"%s\" (real path is %s) exist and a directory... ###", path, fake_cwd.get_current());
 		return false;	// the path is invalid (inconsist) // ESP_LOGE("Device::valid_path", "Path \"%s\" (real path %s) is a file, but marked as a directory, it's invalid!!!", path, fake_cwd.get_current());
-	ESP_LOGD("Device::valid_path", "###!!! test dirname \"%s\" (real path is %s) preliminary is OK, seek to begin of last dir manually for continue test... ###", path, /*fake_cwd.*/get_current());
+	ESP_LOGD("Device::valid_path", "###!!! test dirname \"%s\" (real path is %s) preliminary is OK, seek to begin of last dir manually for continue test... ###", path, get_current());
 	for (base -= 2; base > path; base--)
 	{
 	    ESP_LOGD("Device::valid_path", "=== base[0] is \"%c\" ===", base[0]);
@@ -302,8 +302,8 @@ bool CWD_emulating::valid_path(const char path[])
 		    continue;
 		}; /* if ctrl_cnt & alpha_present_mask */
 		ESP_LOGD(__PRETTY_FUNCTION__, "====== One or two point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", ctrl_cnt);
-		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", /*fake_cwd.*/get(path, scan - path));
-		if ((stat(/*fake_cwd.*/get(path, scan - path), &st) == 0)? !S_ISDIR(st.st_mode): (strcmp(/*fake_cwd.*/get_current(), "/") != 0))
+		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", get(path, scan - path));
+		if ((stat(get(path, scan - path), &st) == 0)? !S_ISDIR(st.st_mode): (strcmp(get_current(), "/") != 0))
 		    return false;
 	    }; /* switch ctrl_cnt */
 	    ctrl_cnt = 0;

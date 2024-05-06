@@ -39,8 +39,8 @@ namespace fs	//-----------------------------------------------------------------
 	// return current pwd (current dir) only
 	char* get();
 	// return full path appling current dir
-	char* get(const char path[]) { ESP_LOGD("CWD_emulating:", "%s: \"path\" argument is %s", __func__, path);
-	    ESP_LOGD("CWD_emulating:", "%s: \"len\" argument is zero",  __func__);
+	char* get(const char path[]) { ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path);
+	    ESP_LOGD(__PRETTY_FUNCTION__, "\"len\" argument is zero");
 	    return get(path, strlen(path));
 	};
 	// return full path appling current dir, use desired part of the passed path
@@ -68,7 +68,7 @@ namespace fs	//-----------------------------------------------------------------
 
 	char* const pwd;	// pointer to cwd buffer
 	const size_t pwd_bufflen;
-	static char operative_path_buff[PATH_MAX];	// temporary buffer for file fullpath composing
+	static char operative_path_buff[PATH_MAX];	/// temporary buffer for file fullpath composing
 
     }; /* CWD_emulating */
 

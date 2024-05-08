@@ -39,29 +39,30 @@ namespace fs	//-----------------------------------------------------------------
 	// return current pwd (current dir) only
 	char* get();
 	// return full path appling current dir
-	char* get(const char path[]) { ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path);
+	char* compose(const char path[]) { ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path);
 	    ESP_LOGD(__PRETTY_FUNCTION__, "\"len\" argument is zero");
-	    return get(path, strlen(path));
+	    return compose(path, strlen(path));
 	};
-	// return full path appling current dir, use desired part of the passed path
-	char* get(const char path[], size_t);
+	// compose the full path from the current directory with addition specified part of the passed path
+	char* compose(const char path[], size_t);
+//	char* get(const char path[], size_t);
 #pragma GCC diagnostic pop
 	// raw get path with current dir:
 	// only concatenate path with current dir,
 	// not processing output with realpath().
-	char* raw_get(const char path[] = nullptr);
+	char* raw_compose(const char path[] = nullptr);
 	// get current operative path buffer - previous stored path on it
-	char* get_current() {return operative_path_buff;};
+	char* current() {return operative_path_buff;};
 	// the pwd dir is root?
-	bool pwd_is_root() { return (strcmp(pwd, "/") == 0)? true: false;};
+	bool is_root() { return (strcmp(pwd, "/") == 0)? true: false;};
 	// change cwd dir
-	esp_err_t change_dir(const char path[]);
+	esp_err_t change(const char path[]);
 	char* clearbuff() {operative_path_buff[0] = '\0'; return operative_path_buff;};	// clear operative path buffer - set it's value to ""
 
 	/// @brief Path validation - whatever the path exist or not -
 	/// any subpath is a valid existing path
 	/// @note method can modify fake_cwd::operative_path_buf
-	bool valid_path(const char[]);
+	bool valid(const char[]);
 
 
     private:

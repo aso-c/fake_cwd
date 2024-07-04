@@ -19,26 +19,33 @@
 
 
 /// Text representation mode of statbuf (directory entry information)
-inline constexpr const char* statmode2txt(const struct stat& statbuf)
+inline constexpr const char* statmode2txt(const struct stat* statbuf)
 {
-    return (S_ISLNK(statbuf.st_mode))? "symlink":
-	    (S_ISDIR(statbuf.st_mode))? "directory":
-	    (S_ISCHR(statbuf.st_mode))? "character device":
-	    (S_ISBLK(statbuf.st_mode))? "block device":
-	    (S_ISFIFO(statbuf.st_mode))? "FIFO channel":
-	    (S_ISSOCK(statbuf.st_mode))? "socket":
+    return (S_ISLNK(statbuf->st_mode))? "symlink":
+	    (S_ISDIR(statbuf->st_mode))? "directory":
+	    (S_ISCHR(statbuf->st_mode))? "character device":
+	    (S_ISBLK(statbuf->st_mode))? "block device":
+	    (S_ISFIFO(statbuf->st_mode))? "FIFO channel":
+	    (S_ISSOCK(statbuf->st_mode))? "socket":
 					"(unknown type)";
 }; /* statmode2txt() */
 
+/// Text representation mode of statbuf (directory entry information)
+inline constexpr const char* statmode2txt(const struct stat& statbuf)
+{
+    return statmode2txt(&statbuf);
+}; /* statmode2txt() */
 
-// if path - is absolute path
-inline bool absolute_path(const char path[]) { return (path[0] == '/'); };
-inline bool absolute_path(const std::string& path) { return !path.empty() && (path.front() == '/'); };
 
 
 namespace fs	//-----------------------------------------------------------------------------------------------------
 {
 
+    /// if path - is absolute path
+    inline bool absolute_path(const char path[]) { return (path[0] == '/'); };
+    inline bool absolute_path(const std::string& path) { return !path.empty() && (path.front() == '/'); };
+
+    /// Emulating of the CWD (current directory)
     class CWD_emulating
     {
     public:
@@ -51,38 +58,35 @@ namespace fs	//-----------------------------------------------------------------
 	// get current dir (if path == NULL or "") or generate fullpath for sended path
 	// absent trailing slash in returned string is guaranteed
 	// return current pwd (current dir) only
-//	char* get();
 	std::string get();
 	// return full path appling current dir
-//	char* compose(const char path[]) { ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path);
 	std::string compose(const std::string& path) { ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path.c_str());
 	    ESP_LOGD(__PRETTY_FUNCTION__, "\"len\" argument is zero");
 	    return compose(path, path.length()/*strlen(path)*/);
 	};
 	// compose the full path from the current directory with addition specified part of the passed path
-//	char* compose(const char path[], size_t);
 	std::string compose(const std::string&, size_t);
-//	char* get(const char path[], size_t);
 #pragma GCC diagnostic pop
 	// raw get path with current dir:
 	// only concatenate path with current dir,
 	// not processing output with realpath().
-	char* raw_compose(const char path[] = nullptr);
+//	char* raw_compose(const char path[] = nullptr);
+	char* raw_compose(const std::string& path = "");
 	// get current operative path buffer - previous stored path on it
-	char* current() {return operative_path_buff;};
+//	char* current() {return operative_path_buff;};
+	std::string current() {return operative_path_buff;};
 	// the pwd dir is root?
-//	bool is_root(const std::string& str) const { return (str == "/");};
 	static bool is_root(const std::string& str) { return (str == "/"); };
 	bool is_root() const { return is_root(pwd)/*(strcmp(pwd, "/") == 0)? true: false*/;};
 	// change cwd dir
-//	esp_err_t change(const char path[]);
 	esp_err_t change(const std::string& path);
 	char* clearbuff() {operative_path_buff[0] = '\0'; return operative_path_buff;};	// clear operative path buffer - set it's value to ""
 
 	/// @brief Path validation - whatever the path exist or not -
 	/// any subpath is a valid existing path
 	/// @note method can modify fake_cwd::operative_path_buf
-	bool valid(const char[]);
+//	bool valid(const char[]);
+	bool valid(const std::string&);
 
 
     private:

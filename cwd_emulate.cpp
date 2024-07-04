@@ -66,7 +66,6 @@ namespace fs	//-----------------------------------------------------------------
 // absent trailing slash in returned string is guaranteed
 
 // return current pwd (current dir) only
-//char* CWD_emulating::get()
 std::string CWD_emulating::get()
 {
     ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is absent");
@@ -74,6 +73,7 @@ std::string CWD_emulating::get()
 //#if __cplusplus < 201703L	// <--- conditionally, for example
     strcpy(operative_path_buff, pwd);
     return operative_path_buff;
+//    return pwd;
 //#endif	// __cplusplus < 201703L
 }; /* char* CWD_emulating::get() */
 
@@ -82,7 +82,6 @@ std::string CWD_emulating::get()
 // return full path appling current dir, use desired part of the passed path
 // return current dir (if path == NULL or "") or generate fullpath for sended path
 // trailing slash in returned string is absent always
-//char* CWD_emulating::compose(const char path[], size_t len)
 std::string CWD_emulating::compose(const std::string& path, size_t offset/*len*/)
 {
     ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path.c_str());
@@ -153,15 +152,18 @@ std::string CWD_emulating::compose(const std::string& path, size_t offset/*len*/
 // raw_get path with current dir:
 // only concatenate path with current dir,
 // not processing output with realpath().
-char* CWD_emulating::raw_compose(const char path[])
+//char* CWD_emulating::raw_compose(const char path[])
+char* CWD_emulating::raw_compose(const std::string& path)
 {
-    if (empty(path))
+//    if (empty(path))
+    if (path.empty())
+    if (astr::is_space(path))
 	return strcpy(operative_path_buff, pwd);
     if(absolute_path(path))
-	return strcpy(operative_path_buff, path);
+	return strcpy(operative_path_buff, path.c_str());
     raw_compose();
     strcat(operative_path_buff, "/");	// add directory separator at end of the default path
-    return strcat(operative_path_buff, path);	// add the path above to default path
+    return strcat(operative_path_buff, path.c_str());	// add the path above to default path
 }; /* CWD_emulating::raw_compose() */
 
 
@@ -175,15 +177,13 @@ esp_err_t CWD_emulating::change(const std::string& path)
     ESP_LOGD("CWD_emulating::change_dir", "The \"path\" parameter is: \"%s\"", path.c_str());
     ESP_LOGD("CWD_emulating::change_dir", "The \"tmpstr\" variable is: \"%s\"", tmpstr.c_str());
 
-//    if (tmpstr == nullptr || tmpstr[0] == '\0')
-    if (astr::is_space(tmpstr))
     //if (tmpstr.empty())
+    if (astr::is_space(tmpstr))
     {
 	ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed");
 	return ESP_FAIL;
     }; /* if astr::is_space(tmpstr) */
     // if dir changed to root - exclusively change dir
-//    if (strcmp(tmpstr,"/") == 0)
     if (is_root(tmpstr))
 	goto final_copy;
     if (stat(tmpstr.c_str(), &statbuf) == -1)
@@ -191,17 +191,9 @@ esp_err_t CWD_emulating::change(const std::string& path)
 	ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
 		"\t\t\t\tcurrent directory was not changing", tmpstr.c_str());
 	return ESP_ERR_NOT_FOUND;
-    }; /* if stat(tmpstr, &statbuf) == -1 */
+    }; /* if stat(tmpstr.c_str(), &statbuf) == -1 */
     ESP_LOGD("CWD_emulating::change_dir", "to %s which is a %s\n", tmpstr.c_str(),
-	    statmode2txt(statbuf)
-	    /*(S_ISLNK(statbuf.st_mode))? "[symlink]":
-	    (S_ISREG(statbuf.st_mode))? "(file)":
-	    (S_ISDIR(statbuf.st_mode))? "<DIR>":
-	    (S_ISCHR(statbuf.st_mode))? "[char dev]":
-	    (S_ISBLK(statbuf.st_mode))? "[blk dev]":
-	    (S_ISFIFO(statbuf.st_mode))? "[FIFO]":
-	    (S_ISSOCK(statbuf.st_mode))? "[socket]":
-	    "[unknown type]"*/);
+	    statmode2txt(statbuf));
     if (!S_ISDIR(statbuf.st_mode))
     {
 	ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not directory;\n"
@@ -215,40 +207,48 @@ final_copy:
     return ESP_OK;
 }; /* CWD_emulating::change() */
 
-
 /// @details if the basename (the last part of the path) - has the characteristics
 /// of a directory name, and a dirname (the path prefix) -
 /// is an existing file, not a directory, or any other impossible variants
 /// of the full file/path name
-bool CWD_emulating::valid(const char path[])
+//bool CWD_emulating::valid(const char path[])
+[[deprecated]]
+ // FIXME Dirty code - need upgrading to correct usung std::string parameters
+bool CWD_emulating::valid(const std::string& path)
 {
 
 	struct stat st;
-	char *base = basename(path);	// get a filename of a path
+	char *base = basename(path.c_str());	// get a filename of a path
+//	std::string base = basename(path.c_str());	// get a filename of a path
 
 /*esp_log_level_set("Device::valid_path", ESP_LOG_DEBUG);*//* for debug purposes */
     ESP_LOGD(__PRETTY_FUNCTION__, "basename of the path is: \"%s\"", base);
-    ESP_LOGD(__PRETTY_FUNCTION__, "full path is: \"%s\"", path);
-    ESP_LOGD(__PRETTY_FUNCTION__, "dirname path is: \"%.*s\"", base - path, path);
+    ESP_LOGD(__PRETTY_FUNCTION__, "full path is: \"%s\"", path.c_str());
+//    ESP_LOGD(__PRETTY_FUNCTION__, "dirname path is: \"%.*s\"", base - path, path);
+    ESP_LOGD(__PRETTY_FUNCTION__, "dirname path is: \"%.*s\"", path.length() - strlen(base), path.c_str());
 
 //    strcpy(given_path, fake_cwd.curr_get());
     // if path is empty
-    if (empty(path))
+//    if (empty(path))
+    if (path.empty())
 	return true;	// ESP_LOGD("Device::valid_path", "path is empty, always valid");
 
     // if path - only base, not a dir
-    if (strlen(path) == 1)
+//    if (strlen(path) == 1)
+    if (path.length() == 1)
 	return true;	// ESP_LOGD("Device::valid_path", "len of the path - is 1, always valid");
 
     // if dirname - empty or one symbol length (it can only be the slash)
-    if ((base - path) < 2)
+//    if ((base - path) < 2)
+    if ((path.length() - strlen(base)) < 2)
     {
-	if (strcmp(path, "/..") == 0)	// if path == '/..' - it's invalid
+//	if (strcmp(path, "/..") == 0)	// if path == '/..' - it's invalid
+	if (path == "/..")	// if path == '/..' - it's invalid
 	    return false;
 	return true;	// ESP_LOGD("Device::valid_path", "Len of dirname is 1 or 0, then path is valid");
     }; /* if (base - path) < 2 */
 
-    // if base is empty
+    // if base is not empty
     if (!empty(base))
 	base--;	// set base to a last slash in the path
     else
@@ -256,7 +256,7 @@ bool CWD_emulating::valid(const char path[])
 	if (stat(compose(path).c_str(), &st) == 0)
 	    if (!S_ISDIR(st.st_mode))	// ESP_LOGD("Device::valid_path", "###!!! the path basename - is empty, test the path \"%s\" (real path is %s) exist and a directory... ###", path, fake_cwd.get_current());
 		return false;	// the path is invalid (inconsist) // ESP_LOGE("Device::valid_path", "Path \"%s\" (real path %s) is a file, but marked as a directory, it's invalid!!!", path, fake_cwd.get_current());
-	ESP_LOGD("Device::valid_path", "###!!! test dirname \"%s\" (real path is %s) preliminary is OK, seek to begin of last dir manually for continue test... ###", path, current());
+	ESP_LOGD("Device::valid_path", "###!!! test dirname \"%s\" (real path is %s) preliminary is OK, seek to begin of last dir manually for continue test... ###", path.c_str(), current().c_str());
 	for (base -= 2; base > path; base--)
 	{
 	    ESP_LOGD("Device::valid_path", "=== base[0] is \"%c\" ===", base[0]);
@@ -275,7 +275,7 @@ bool CWD_emulating::valid(const char path[])
 	unsigned int ctrl_cnt = initial_ctrl;	// marked the firs pass of the control loop
 	unsigned int idx_ctrl = 0;
     // scan the dirname of the path for found '/.' or '/..' sequence
-    for (char* scan = base; scan >= path; scan--)
+    for (char* scan = base; scan >= path.c_str(); scan--)
     {
 	ESP_LOGD("Device::valid_path", "current char from the path is: '%c', ctrl_cnt is %2X", *scan, ctrl_cnt);
 
@@ -299,10 +299,11 @@ bool CWD_emulating::valid(const char path[])
 		break;
 
 	    case initial_ctrl:
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wimplicit-fallthrough="
+//#pragma GCC diagnostic push
+//#pragma GCC diagnostic ignored "-Wimplicit-fallthrough="
 		ESP_LOGD(__PRETTY_FUNCTION__, "++++++ The first pass of the control loop ++++++");
-#pragma GCC diagnostic pop
+//#pragma GCC diagnostic pop
+		[[fallthrough]];
 
 	    default:
 		// if non point sign is present in tested substring
@@ -313,8 +314,8 @@ bool CWD_emulating::valid(const char path[])
 		    continue;
 		}; /* if ctrl_cnt & alpha_present_mask */
 		ESP_LOGD(__PRETTY_FUNCTION__, "====== One or two point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", ctrl_cnt);
-		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path, scan - path).c_str());
-		if ((stat(compose(path, scan - path).c_str(), &st) == 0)? !S_ISDIR(st.st_mode): (is_root(current()/*strcmp(current(), "/"*/) != 0))
+		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.c_str(), scan - path.c_str()).c_str());
+		if ((stat(compose(path, scan - path.c_str()).c_str(), &st) == 0)? !S_ISDIR(st.st_mode): (is_root(current()/*strcmp(current(), "/"*/) != 0))
 		    return false;
 	    }; /* switch ctrl_cnt */
 	    ctrl_cnt = 0;

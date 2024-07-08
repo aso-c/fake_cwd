@@ -58,7 +58,7 @@ namespace fs	//-----------------------------------------------------------------
 	// get current dir (if path == NULL or "") or generate fullpath for sended path
 	// absent trailing slash in returned string is guaranteed
 	// return current pwd (current dir) only
-	std::string get();
+	std::string get() const;
 	// return full path appling current dir
 	std::string compose(const std::string& path) { ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path.c_str());
 	    ESP_LOGD(__PRETTY_FUNCTION__, "\"len\" argument is zero");
@@ -70,14 +70,12 @@ namespace fs	//-----------------------------------------------------------------
 	// raw get path with current dir:
 	// only concatenate path with current dir,
 	// not processing output with realpath().
-//	char* raw_compose(const char path[] = nullptr);
 	char* raw_compose(const std::string& path = "");
 	// get current operative path buffer - previous stored path on it
-//	char* current() {return operative_path_buff;};
 	std::string current() {return operative_path_buff;};
 	// the pwd dir is root?
 	static bool is_root(const std::string& str) { return (str == "/"); };
-	bool is_root() const { return is_root(pwd)/*(strcmp(pwd, "/") == 0)? true: false*/;};
+	bool is_root() const { return is_root(pwd);};
 	// change cwd dir
 	esp_err_t change(const std::string& path);
 	char* clearbuff() {operative_path_buff[0] = '\0'; return operative_path_buff;};	// clear operative path buffer - set it's value to ""
@@ -85,8 +83,14 @@ namespace fs	//-----------------------------------------------------------------
 	/// @brief Path validation - whatever the path exist or not -
 	/// any subpath is a valid existing path
 	/// @note method can modify fake_cwd::operative_path_buf
-//	bool valid(const char[]);
-	bool valid(const std::string&);
+	bool valid(const std::string& path) {
+	    ESP_LOGW(__PRETTY_FUNCTION__, "Call the fs::CWD_emulating::valid(const std::string&) procedure, inline const std::string lvalue ref version");
+	    return valid(std::string(path));};
+	bool valid(std::string&&);
+
+	operator std::string() const {return get();};
+//	CWD_emulating& operator += (const std::string& path) {change(path); return this;};
+	CWD_emulating& operator /= (const std::string& path) {change(path); return *this;};
 
 
     private:
@@ -95,8 +99,14 @@ namespace fs	//-----------------------------------------------------------------
 	const size_t pwd_bufflen;
 	static char operative_path_buff[PATH_MAX];	/// temporary buffer for file fullpath composing
 
+	/// Sel log/debug level in the desired procedure
+	/// Usage: call in debugging procedure: selective_log_level_set("Device::valid_path", ESP_LOG_DEBUG);*/	/* for debug purposes */
+	void selective_log_level_set(const char tag[], esp_log_level_t level) {esp_log_level_set(tag, level);};
+
     }; /* CWD_emulating */
 
+//    std::string operator + (const CWD_emulating& cwd, const std::string& path) {return cwd.compose(path);};
+    //std::string operator / (const CWD_emulating& cwd, const std::string& path) {return cwd.compose(path);};
 
 }; //--[ namespace fs ]------------------------------------------------------------------------------------------------
 

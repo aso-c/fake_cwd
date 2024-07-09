@@ -177,6 +177,8 @@ char* CWD_emulating::raw_compose(const std::string& path)
 /// change cwd dir
 esp_err_t CWD_emulating::change(const std::string& path)
 {
+    esp_log_level_set("CWD_emulating::change", ESP_LOG_DEBUG);	/* for debug purposes */
+
 	const std::string tmpstr = compose(path);
 	struct stat statbuf;
 

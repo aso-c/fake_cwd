@@ -79,6 +79,8 @@ namespace fs	//-----------------------------------------------------------------
 	bool is_root() const { return is_root(pwd);};
 	// change cwd dir
 	esp_err_t change(const std::string& path);
+	// Set pwd to a ""
+	void clear() {pwd[0] = '\0';};
 	char* clearbuff() {operative_path_buff[0] = '\0'; return operative_path_buff;};	// clear operative path buffer - set it's value to ""
 
 	/// @brief Path validation - whatever the path exist or not -

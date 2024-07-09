@@ -82,28 +82,32 @@ std::string CWD_emulating::get() const
 // return full path appling current dir, use desired part of the passed path
 // return current dir (if path == NULL or "") or generate fullpath for sended path
 // trailing slash in returned string is absent always
-std::string CWD_emulating::compose(const std::string& path, size_t offset/*len*/)
+//std::string CWD_emulating::compose(const std::string& path, size_t offset/*len*/)
+std::string CWD_emulating::compose(std::string&& path/*, size_t offset*//*len*/)
 {
+    // drop trailing & leading spaces
+    path = astr::trim(path);
     ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path.c_str());
-    ESP_LOGD(__PRETTY_FUNCTION__, "\"len\" argument is %d",  offset);
-    // if len not defined
-    if (offset == 0)
-	return compose(path);
+//    ESP_LOGD(__PRETTY_FUNCTION__, "\"len\" argument is %d",  offset);
+//    // if len not defined
+//    if (offset == 0)
+//	return compose(path);
 
     // argument - absolute path
 //    if (!empty(path) && absolute_path(path))
     if (absolute_path(path))
     {
-	if (offset > sizeof(operative_path_buff) / sizeof(char) - 1)
-	    clearbuff();	// path don't fit in operative_path_buff - error, return empty str
-	else
-	{
-		char* tmpstr = (char*)malloc(offset + 1);
-	    strncpy(tmpstr, path.c_str(), offset/* + 1*/);
-	    tmpstr[offset] = '\0';	// complete the NULL-terminated string
-	    realpath(tmpstr, operative_path_buff);
-	    free(tmpstr);
-	}; /* if len > (sizeof(operative_path_buff) / sizeof(char) - 1) */
+//	if (offset > sizeof(operative_path_buff) / sizeof(char) - 1)
+//	    clearbuff();	// path don't fit in operative_path_buff - error, return empty str
+//	else
+//	{
+//		char* tmpstr = (char*)malloc(offset + 1);
+//	    strncpy(tmpstr, path.c_str(), offset/* + 1*/);
+//	    tmpstr[offset] = '\0';	// complete the NULL-terminated string
+//	    realpath(tmpstr, operative_path_buff);
+//	    free(tmpstr);
+//	}; /* if len > (sizeof(operative_path_buff) / sizeof(char) - 1) */
+	realpath(path.c_str(), operative_path_buff);
 	ESP_LOGD("CWD_emulating:", "%s: operative_path_buff is \"%s\"", __func__, operative_path_buff);
 	return operative_path_buff;
     }; /* if path[0] != '/' */
@@ -121,6 +125,7 @@ std::string CWD_emulating::compose(const std::string& path, size_t offset/*len*/
 
     // relative path - finalize processing
     ESP_LOGD(__PRETTY_FUNCTION__, "processing relative path: updating path on top of the current pwd");
+#if 0	// old var processing
     // add a trailing slash at end of the relative path base
     if (operative_path_buff[strlen(operative_path_buff) - 1] != '/')
     {
@@ -144,8 +149,10 @@ std::string CWD_emulating::compose(const std::string& path, size_t offset/*len*/
 	 char* src = realpath(operative_path_buff, NULL);	// resolve dirty path
     strcpy(operative_path_buff, src);
     free(src);
-
     return operative_path_buff;
+#endif	// old var processing
+    return realpath((std::string(pwd) + ((pwd[strlen(pwd)-1] != '/')? "/": "") + path).c_str(), /*std::nullptr*/ NULL);
+
 }; /* CWD_emulating::compose() */
 
 
@@ -176,7 +183,6 @@ esp_err_t CWD_emulating::change(const std::string& path)
     ESP_LOGD("CWD_emulating::change_dir", "The \"path\" parameter is: \"%s\"", path.c_str());
     ESP_LOGD("CWD_emulating::change_dir", "The \"tmpstr\" variable is: \"%s\"", tmpstr.c_str());
 
-    //if (tmpstr.empty())
     if (astr::is_space(tmpstr))
     {
 	ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed");

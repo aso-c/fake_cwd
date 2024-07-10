@@ -49,36 +49,33 @@ namespace fs	//-----------------------------------------------------------------
     class CWD_emulating
     {
     public:
-//	CWD_emulating(char cwdbuff[], size_t cwdbufflen):
-	CWD_emulating(char cwdbuff[], size_t cwdbufflen):
-	    pwd(cwdbuff), pwd_bufflen(cwdbufflen) {/*esp_log_level_set("CWD_emulating:", ESP_LOG_DEBUG);*//* for debug purposes */};
+	CWD_emulating(/*char cwdbuff[], size_t cwdbufflen,*/ std::string mountpointdef = "", char delim = '/'):
+	    delimiter(delim), defmountpoint(mountpointdef)/*, pwd(cwdbuff), pwd_bufflen(cwdbufflen)*/
+	{/*esp_log_level_set("CWD_emulating:", ESP_LOG_DEBUG);*//* for debug purposes */};
 
-//#pragma GCC diagnostic push
-//#pragma GCC diagnostic ignored "-Wnonnull"
 	// get current dir (if path == NULL or "") or generate fullpath for sended path
 	// absent trailing slash in returned string is guaranteed
 
 	// return current pwd (current dir) only, absent trailing slash in returned string is guaranteed
 	std::string get() const;
 	// return full path appling current dir
-	std::string compose(const std::string& path) { ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path.c_str());
-	    ESP_LOGD(__PRETTY_FUNCTION__, "\"CWD_emulating\" compose for const std::string& path, redirect to rvalue-version with temporary copy of it");
-	    return compose(std::string(path)/*, path.length()*//*strlen(path)*/);
-	};
+//	std::string compose(const std::string& path) { ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path.c_str());
+//	    ESP_LOGD(__PRETTY_FUNCTION__, "\"CWD_emulating\" compose for const std::string& path, redirect to rvalue-version with temporary copy of it");
+//	    return compose(std::string(path)/*, path.length()*//*strlen(path)*/);
+//	};
 	// compose the full path from the current directory for rvalue type path
-	std::string compose(std::string&&);
-//#pragma GCC diagnostic pop
+	std::string compose(std::string/*&&*/);
 	// raw get path with current dir:
 	// only concatenate path with current dir,
 	// not processing output with realpath().
-	char* raw_compose(const std::string& path = "");
+//	char* raw_compose(const std::string& path = "");
 	// get current operative path buffer - previous stored path on it
 	std::string current() {return operative_path_buff;};
 	// the pwd dir is root?
 	static bool is_root(const std::string& str) { return (str == "/"); };
 	bool is_root() const { return is_root(pwd);};
 	// change cwd dir
-	esp_err_t change(const std::string& path);
+	esp_err_t change(/*const*/ std::string/*&*/ path);
 	// Set pwd to a ""
 	void clear() {pwd[0] = '\0';};
 	char* clearbuff() {operative_path_buff[0] = '\0'; return operative_path_buff;};	// clear operative path buffer - set it's value to ""
@@ -86,20 +83,24 @@ namespace fs	//-----------------------------------------------------------------
 	/// @brief Path validation - whatever the path exist or not -
 	/// any subpath is a valid existing path
 	/// @note method can modify fake_cwd::operative_path_buf
-	bool valid(const std::string& path) {
-	    ESP_LOGW(__PRETTY_FUNCTION__, "Call the fs::CWD_emulating::valid(const std::string&) procedure, inline const std::string lvalue ref version");
-	    return valid(std::string(path));};
-	bool valid(std::string&&);
+//	bool valid(const std::string& path) {
+//	    ESP_LOGW(__PRETTY_FUNCTION__, "Call the fs::CWD_emulating::valid(const std::string&) procedure, inline const std::string lvalue ref version");
+//	    return valid(std::string(path));};
+	bool valid(std::string/*&&*/);
 
 	operator std::string() const {return get();};
-//	CWD_emulating& operator += (const std::string& path) {change(path); return this;};
 	CWD_emulating& operator /= (const std::string& path) {change(path); return *this;};
+
+
+	const char delimiter;	//< delimiter of directory parts
 
 
     private:
 
-	char* const pwd;	// pointer to cwd buffer
-	const size_t pwd_bufflen;
+	const std::string defmountpoint;
+	std::string pwd;
+//	char* const pwd;	// pointer to cwd buffer
+//	const size_t pwd_bufflen;
 	static char operative_path_buff[PATH_MAX];	/// temporary buffer for file fullpath composing
 
 	/// Sel log/debug level in the desired procedure

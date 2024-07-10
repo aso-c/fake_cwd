@@ -70,11 +70,7 @@ namespace fs	//-----------------------------------------------------------------
     {
 	ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is absent");
 	ESP_LOGD(__PRETTY_FUNCTION__, "\"len\" argument is absent too");
-//#if __cplusplus < 201703L	// <--- conditionally, for example
-//    strcpy(operative_path_buff, pwd);
-//    return operative_path_buff;
 	return pwd;
-//#endif	// __cplusplus < 201703L
     }; /* char* CWD_emulating::get() */
 
 
@@ -82,8 +78,7 @@ namespace fs	//-----------------------------------------------------------------
     // return full path appling current dir, use desired part of the passed path
     // return current dir (if path == NULL or "") or generate fullpath for sended path
     // trailing slash in returned string is absent always
-//std::string CWD_emulating::compose(const std::string& path, size_t offset/*len*/)
-    std::string CWD_emulating::compose(std::string/*&&*/ path)
+    std::string CWD_emulating::compose(std::string path)
     {
 	// drop trailing & leading spaces
 	path = astr::trim(std::move(path));
@@ -98,67 +93,22 @@ namespace fs	//-----------------------------------------------------------------
 	    return std::string(freewrapper<char>(realpath(path.c_str(), /*std::nullptr*/ NULL)));
 	}; /* if path[0] != '/' */
 
-	get();
+
 	// pwd == "" --> catch it
 	if (empty(pwd))
-	    return current();
+	    return path;
 
-	// argument - NULL or empty string
+	// argument - empty string
 	//if (astr::is_space(path))
 	if (path.empty())
-	    return current();
+	    return get();
 
 	// relative path - finalize processing
 	ESP_LOGD(__PRETTY_FUNCTION__, "processing relative path: updating path on top of the current pwd");
-#if 0	// old var processing
-    // add a trailing slash at end of the relative path base
-    if (operative_path_buff[strlen(operative_path_buff) - 1] != '/')
-    {
-	ESP_LOGD(__PRETTY_FUNCTION__, "operative_path_buff before adding trailing slash is: \"%s\"", operative_path_buff);
-	// add EOL behind the string data in the operative_path_buff
-	// add trailing '/' at the operative_path_buff
-	operative_path_buff[strlen(operative_path_buff) + 1] = '\0';
-	operative_path_buff[strlen(operative_path_buff)] = '/';
-	//strcat(operative_path_buff, "/");
-	ESP_LOGD(__PRETTY_FUNCTION__, "operative_path_buff after adding trailing slash is: \"%s\"", operative_path_buff);
-    }; /* if operative_path_buffer[strlen(operative_path_buff) - 1] != '/' */
-
-    // copy path on top of base bath
-    if (strlen(operative_path_buff) + offset < sizeof(operative_path_buff) / sizeof(char))
-	strncat(operative_path_buff, path.c_str(), offset);
-    else
-	return clearbuff();
-
-    ESP_LOGD(__PRETTY_FUNCTION__, "final operative_path_buff after drop it's trailing slash: \"%s\"", operative_path_buff);
-
-	 char* src = realpath(operative_path_buff, NULL);	// resolve dirty path
-    strcpy(operative_path_buff, src);
-    free(src);
-    return operative_path_buff;
-#endif	// old var processing
 	return realpath((pwd + (((*pwd.end()) != '/')? "/": "") + path).c_str(), /*std::nullptr*/ NULL);
 
 }; /* CWD_emulating::compose() */
 
-
-#if 0
-// raw_get path with current dir:
-// only concatenate path with current dir,
-// not processing output with realpath().
-//char* CWD_emulating::raw_compose(const char path[])
-char* CWD_emulating::raw_compose(const std::string& path)
-{
-//    if (empty(path))
-//    if (path.empty())
-    if (astr::is_space(path))
-	return strcpy(operative_path_buff, pwd);
-    if(absolute_path(path))
-	return strcpy(operative_path_buff, path.c_str());
-    raw_compose();
-    strcat(operative_path_buff, "/");	// add directory separator at end of the default path
-    return strcat(operative_path_buff, path.c_str());	// add the path above to default path
-}; /* CWD_emulating::raw_compose() */
-#endif
 
 
 /// change cwd dir
@@ -173,17 +123,14 @@ esp_err_t CWD_emulating::change(/*const*/ std::string/*&*/ path)
     ESP_LOGD("CWD_emulating::change_dir", "The \"path\" parameter is: \"%s\"", path.c_str());
     ESP_LOGD("CWD_emulating::change_dir", "The \"tmpstr\" variable is: \"%s\"", tmpstr.c_str());
 
-//    if (astr::is_space(tmpstr))
     if (astr::is_space(path))
     {
 	ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed");
 	return ESP_FAIL;
     }; /* if astr::is_space(tmpstr) */
     // if dir changed to root - exclusively change dir
-//    if (is_root(tmpstr))
     if (is_root(path))
 	goto final;
-//    if (stat(tmpstr.c_str(), &statbuf) == -1)
     if (stat(path.c_str(), &statbuf) == -1)
     {
 	ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
@@ -205,6 +152,7 @@ final:
     return ESP_OK;
 }; /* CWD_emulating::change() */
 
+
 /// @details if the basename (the last part of the path) - has the characteristics
 /// of a directory name, and a dirname (the path prefix) -
 /// is an existing file, not a directory, or any other impossible variants
@@ -213,8 +161,8 @@ final:
  // FIXME Dirty code - need upgrading to correct usung std::string parameters
 bool CWD_emulating::valid(std::string/*&&*/ path)
 {
-    ESP_LOGW(__PRETTY_FUNCTION__, "==== Call the fs::CWD_emulating::valid(std::string&&) procedure, std::string rvalue ref version ===");
-    selective_log_level_set("Device::valid_path", ESP_LOG_DEBUG);	// for debug purposes
+    //selective_log_level_set("Device::valid_path", ESP_LOG_DEBUG);	// for debug purposes
+    ESP_LOGD(__PRETTY_FUNCTION__, "==== Call the fs::CWD_emulating::valid(std::string&&) procedure, std::string rvalue ref version ===");
 
     path = astr::trim(std::move(path));
 
@@ -234,7 +182,6 @@ bool CWD_emulating::valid(std::string/*&&*/ path)
 	return true;	// ESP_LOGD("Device::valid_path", "len of the path - is 1, always valid");
 
     // if dirname - empty or one symbol length (it can only be the slash)
-//    if ((base - path) < 2)
     if ((path.length() - base.length()) < 2)
     {
 	if (path == "/..")	// if path == '/..' - it's invalid
@@ -265,8 +212,8 @@ bool CWD_emulating::valid(std::string/*&&*/ path)
 //    auto base_scan = path.rbegin() + base.length();	// for reversed scan
     // if dirname is not empty
     if (base_idx > 0)
-//    if (!empty(base))
 	base_idx--;	// set base to a last slash in the path
+    else return true;
 #if 0
     else
     {
@@ -336,7 +283,9 @@ bool CWD_emulating::valid(std::string/*&&*/ path)
 //		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.c_str(), scan - path.c_str()));
 		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, base_idx)).c_str());
 //		if ((stat(compose(path, scan - path.c_str()).c_str(), &st) == 0)? !S_ISDIR(st.st_mode): (is_root(current()/*strcmp(current(), "/"*/) != 0))
-		if ((stat(compose(path.substr(0, base_idx)).c_str(), &st) == 0)? !S_ISDIR(st.st_mode): is_root(current()))
+		std::string tmp = compose(path.substr(0, base_idx));
+//		if ((stat(compose(path.substr(0, base_idx)).c_str(), &st) == 0)? !S_ISDIR(st.st_mode): is_root(get()))
+		if ((stat(tmp.c_str(), &st) == 0)? !S_ISDIR(st.st_mode): is_root(tmp))
 		    return false;
 	    }; /* switch ctrl_cnt */
 	    ctrl_cnt = 0;
@@ -360,7 +309,7 @@ bool CWD_emulating::valid(std::string/*&&*/ path)
 
 
 // temporary buffer for file fullpath composing
-char CWD_emulating::operative_path_buff[PATH_MAX];
+//char CWD_emulating::operative_path_buff[PATH_MAX];
 
 
 }; /* namespace fs */  //----------------------------------------------------------------------------------------------

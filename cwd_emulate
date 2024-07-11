@@ -62,8 +62,6 @@ namespace Exec //---------------------------------------------------------------
 	std::string get() const;
 	// return full path applied to a current dir
 	std::string compose(std::string) const;
-	// get current operative path buffer - previous stored path on it
-//	std::string current() {return get();};
 	// the pwd dir is root?
 	static bool is_root(const std::string& str) { return (str == "/"); };
 	bool is_root() const { return is_root(pwd);};

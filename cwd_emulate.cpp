@@ -62,16 +62,14 @@ namespace Exec	//---------------------------------------------------------------
     //--[ class CWD_emulating ]-----------------------------------------------------------------------------------------
 
 
-    // get current dir (if path == NULL or "") or generate fullpath for sended path
-    // absent trailing slash in returned string is guaranteed
-
-    // return current pwd (current dir) only
-    std::string CWD::get() const
-    {
-	ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is absent");
-	ESP_LOGD(__PRETTY_FUNCTION__, "\"len\" argument is absent too");
-	return pwd;
-    }; /* char* CWD::get() */
+//    // get current dir (if path == NULL or "") or generate fullpath for sended path
+//    // absent trailing slash in returned string is guaranteed
+//
+//    // return current pwd (current dir) only
+//    const std::string& CWD::get() const
+//    {
+//	return pwd;
+//    }; /* char* CWD::get() */
 
 
     // compose the full path from the current directory with addition specified part of the passed path
@@ -88,19 +86,21 @@ namespace Exec	//---------------------------------------------------------------
 	if (fs::absolute_path(path))
 	    return std::string(freewrapper<char>(realpath(path.c_str(), /*std::nullptr*/ NULL)));
 
-
+#if 0
 	// pwd == "" --> catch it
 	if (empty(pwd))
 	    return path;
 
 	// argument - empty string
-	//if (astr::is_space(path))
 	if (path.empty())
 	    return get();
+#endif
 
 	// relative path - finalize processing
 	ESP_LOGD(__PRETTY_FUNCTION__, "processing relative path: updating path on top of the current pwd");
-	return realpath((pwd + (((*pwd.end()) != '/')? "/": "") + path).c_str(), /*std::nullptr*/ NULL);
+//	return realpath((pwd + (((*pwd.end()) != '/')? "/": "") + path).c_str(), /*std::nullptr*/ NULL);
+	// refine the path: add leading slash & remove tailing slash
+	return std::string(freewrapper<char>(realpath((get() + CWD::refine(path)).c_str(), /*std::nullptr*/ NULL)));
 
     }; /* CWD::compose() */
 
@@ -108,7 +108,6 @@ namespace Exec	//---------------------------------------------------------------
     /// change cwd dir
     esp_err_t CWD::change(std::string path)
     {
-//	    const std::string tmpstr = compose(path);
 	    struct stat statbuf;
 
 //	esp_log_level_set("CWD_emulating::change", ESP_LOG_DEBUG);	/* for debug purposes */
@@ -121,7 +120,7 @@ namespace Exec	//---------------------------------------------------------------
 	{
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed");
 	    return ESP_FAIL;
-	}; /* if astr::is_space(tmpstr) */
+	}; /* if astr::is_space(path) */
 	// if dir changed to root - exclusively change dir
 	if (is_root(path))
 	    goto final;
@@ -130,7 +129,7 @@ namespace Exec	//---------------------------------------------------------------
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
 		    "\t\t\t\tcurrent directory was not changing", path.c_str());
 	    return ESP_ERR_NOT_FOUND;
-	}; /* if stat(tmpstr.c_str(), &statbuf) == -1 */
+	}; /* if stat(path.c_str(), &statbuf) == -1 */
 	ESP_LOGD("CWD_emulating::change_dir", "to %s which is a %s\n", path.c_str(),
 		statmode2txt(statbuf));
 	if (!S_ISDIR(statbuf.st_mode))
@@ -153,7 +152,6 @@ final:
 /// of a directory name, and a dirname (the path prefix) -
 /// is an existing file, not a directory, or any other impossible variants
 /// of the full file/path name
-//bool CWD_emulating::valid(const char path[])
  // FIXME Dirty code - need upgrading to correct usung std::string parameters
 bool CWD::valid(std::string path)
 {
@@ -180,7 +178,8 @@ bool CWD::valid(std::string path)
     // if dirname - empty or one symbol length (it can only be the slash)
     if ((path.length() - base.length()) < 2)
     {
-	if (path == "/..")	// if path == '/..' - it's invalid
+	//if (path == (std::string(delimiter) + ".."))	//< if path == '/..' - it's invalid
+	if (path == "/..")	//< if path == '/..' - it's invalid
 	    return false;
 	return true;	// ESP_LOGD("Device::valid_path", "Len of dirname is 1 or 0, then path is valid");
     }; /* if (base - path) < 2 */
@@ -244,7 +243,6 @@ bool CWD::valid(std::string path)
     {
 	ESP_LOGD("Device::valid_path", "current char from the path is: '%c', ctrl_cnt is %2X", path[scan], ctrl_cnt);
 
-//	switch (scan[0])
 	switch (path[scan])
 	{
 	// solution point
@@ -294,13 +292,14 @@ bool CWD::valid(std::string path)
 	default:
 
 	    if (idx_ctrl < 3)
-//		ctrl_cnt |= (((scan[0] == '.')? point_sign: alpha_sign) << idx_ctrl++ * sign_place);	// ESP_LOGD("Device::valid_path", "%d symbol of the processing substring, symbol is \"%c\"", idx_ctrl, scan[0]);
-		ctrl_cnt |= (((path[scan] == '.')? point_sign: alpha_sign) << idx_ctrl++ * sign_place);	// ESP_LOGD("Device::valid_path", "%d symbol of the processing substring, symbol is \"%c\"", idx_ctrl, scan[0]);
-	}; /* switch scan[0] */
+//		ctrl_cnt |= (((scan[0] == '.')? point_sign: alpha_sign) << idx_ctrl++ * sign_place);
+		ctrl_cnt |= (((path[scan] == '.')? point_sign: alpha_sign) << idx_ctrl++ * sign_place);
+	    // ESP_LOGD("Device::valid_path", "%d symbol of the processing substring, symbol is \"%c\"", idx_ctrl, scan[0]);
+	}; /* switch path[scan] */
     }; /* for char* scan = base; scan >= path; scan-- */
 
     return true;
-}; /* CWD::valid_path() */
+}; /* CWD::valid() */
 
 
     /// Force assign value of current working directory
@@ -324,8 +323,10 @@ bool CWD::valid(std::string path)
     {
 	str = astr::trim(str);
 	// if  string was ended from '/' - drop it
-	if (*str.end() == '/')
+	while (*str.end() == '/')
 	    str.erase(str.end());
+	if (str.empty())
+	    str = '/';
 	// if  string was not started from '/' - add it
 	if (str[0] != '/')
 	    str.insert(str.begin(), '/');

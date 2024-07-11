@@ -52,7 +52,7 @@ using namespace std;
 
 
 
-namespace fs	//-----------------------------------------------------------------------------------------------------
+namespace Exec	//-----------------------------------------------------------------------------------------------------
 {
 
     [[maybe_unused]]
@@ -66,26 +66,26 @@ namespace fs	//-----------------------------------------------------------------
     // absent trailing slash in returned string is guaranteed
 
     // return current pwd (current dir) only
-    std::string CWD_emulating::get() const
+    std::string CWD::get() const
     {
 	ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is absent");
 	ESP_LOGD(__PRETTY_FUNCTION__, "\"len\" argument is absent too");
 	return pwd;
-    }; /* char* CWD_emulating::get() */
+    }; /* char* CWD::get() */
 
 
     // compose the full path from the current directory with addition specified part of the passed path
     // return full path appling current dir, use desired part of the passed path
     // return current dir (if path == NULL or "") or generate fullpath for sended path
     // trailing slash in returned string is absent always
-    std::string CWD_emulating::compose(std::string path)
+    std::string CWD::compose(std::string path)
     {
 	// drop trailing & leading spaces
 	path = astr::trim(std::move(path));
 	ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path.c_str());
 
 	// argument - absolute path
-	if (absolute_path(path))
+	if (fs::absolute_path(path))
 	{
 //	    realpath(path.c_str(), operative_path_buff);
 	//    ESP_LOGD("CWD_emulating:", "%s: composed path is: \"%s\"", __func__, freewrapper<char>(realpath(path.c_str(), /*std::nullptr*/ NULL)));
@@ -107,12 +107,12 @@ namespace fs	//-----------------------------------------------------------------
 	ESP_LOGD(__PRETTY_FUNCTION__, "processing relative path: updating path on top of the current pwd");
 	return realpath((pwd + (((*pwd.end()) != '/')? "/": "") + path).c_str(), /*std::nullptr*/ NULL);
 
-}; /* CWD_emulating::compose() */
+}; /* CWD::compose() */
 
 
 
 /// change cwd dir
-esp_err_t CWD_emulating::change(/*const*/ std::string/*&*/ path)
+esp_err_t CWD::change(/*const*/ std::string/*&*/ path)
 {
 	const std::string tmpstr = compose(path);
 	struct stat statbuf;
@@ -150,7 +150,8 @@ final:
     // copy tmpstr to pwd at the final
     pwd = path;
     return ESP_OK;
-}; /* CWD_emulating::change() */
+
+}; /* CWD::change() */
 
 
 /// @details if the basename (the last part of the path) - has the characteristics
@@ -159,7 +160,7 @@ final:
 /// of the full file/path name
 //bool CWD_emulating::valid(const char path[])
  // FIXME Dirty code - need upgrading to correct usung std::string parameters
-bool CWD_emulating::valid(std::string/*&&*/ path)
+bool CWD::valid(std::string/*&&*/ path)
 {
     //selective_log_level_set("Device::valid_path", ESP_LOG_DEBUG);	// for debug purposes
     ESP_LOGD(__PRETTY_FUNCTION__, "==== Call the fs::CWD_emulating::valid(std::string&&) procedure, std::string rvalue ref version ===");
@@ -304,15 +305,11 @@ bool CWD_emulating::valid(std::string/*&&*/ path)
     }; /* for char* scan = base; scan >= path; scan-- */
 
     return true;
-}; /* CWD_emulating::valid_path() */
+}; /* CWD::valid_path() */
 
 
 
-// temporary buffer for file fullpath composing
-//char CWD_emulating::operative_path_buff[PATH_MAX];
-
-
-}; /* namespace fs */  //----------------------------------------------------------------------------------------------
+}; // namespace Exec	//---------------------------------------------------------------------------------------------
 
 
 //--[ cwd_emulate.cpp ]------------------------------------------------------------------------------------------------

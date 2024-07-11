@@ -78,7 +78,7 @@ namespace Exec	//---------------------------------------------------------------
     // return full path appling current dir, use desired part of the passed path
     // return current dir (if path == NULL or "") or generate fullpath for sended path
     // trailing slash in returned string is absent always
-    std::string CWD::compose(std::string path)
+    std::string CWD::compose(std::string path) const
     {
 	// drop trailing & leading spaces
 	path = astr::trim(std::move(path));
@@ -86,12 +86,7 @@ namespace Exec	//---------------------------------------------------------------
 
 	// argument - absolute path
 	if (fs::absolute_path(path))
-	{
-//	    realpath(path.c_str(), operative_path_buff);
-	//    ESP_LOGD("CWD_emulating:", "%s: composed path is: \"%s\"", __func__, freewrapper<char>(realpath(path.c_str(), /*std::nullptr*/ NULL)));
-//	    return operative_path_buff;
 	    return std::string(freewrapper<char>(realpath(path.c_str(), /*std::nullptr*/ NULL)));
-	}; /* if path[0] != '/' */
 
 
 	// pwd == "" --> catch it
@@ -107,48 +102,48 @@ namespace Exec	//---------------------------------------------------------------
 	ESP_LOGD(__PRETTY_FUNCTION__, "processing relative path: updating path on top of the current pwd");
 	return realpath((pwd + (((*pwd.end()) != '/')? "/": "") + path).c_str(), /*std::nullptr*/ NULL);
 
-}; /* CWD::compose() */
+    }; /* CWD::compose() */
 
 
-
-/// change cwd dir
-esp_err_t CWD::change(/*const*/ std::string/*&*/ path)
-{
-	const std::string tmpstr = compose(path);
-	struct stat statbuf;
-
-//    esp_log_level_set("CWD_emulating::change", ESP_LOG_DEBUG);	/* for debug purposes */
-
-    path = compose(std::move(path));
-    ESP_LOGD("CWD_emulating::change_dir", "The \"path\" parameter is: \"%s\"", path.c_str());
-    ESP_LOGD("CWD_emulating::change_dir", "The \"tmpstr\" variable is: \"%s\"", tmpstr.c_str());
-
-    if (astr::is_space(path))
+    /// change cwd dir
+    esp_err_t CWD::change(std::string path)
     {
-	ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed");
-	return ESP_FAIL;
-    }; /* if astr::is_space(tmpstr) */
-    // if dir changed to root - exclusively change dir
-    if (is_root(path))
-	goto final;
-    if (stat(path.c_str(), &statbuf) == -1)
-    {
-	ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
-		"\t\t\t\tcurrent directory was not changing", path.c_str());
-	return ESP_ERR_NOT_FOUND;
-    }; /* if stat(tmpstr.c_str(), &statbuf) == -1 */
-    ESP_LOGD("CWD_emulating::change_dir", "to %s which is a %s\n", path.c_str(),
-	    statmode2txt(statbuf));
-    if (!S_ISDIR(statbuf.st_mode))
-    {
-	ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not directory;\n"
-		"\t\t\t\tleave current directory without changing", path.c_str());
-	return ESP_ERR_NOT_SUPPORTED;
-    }; /* if !S_ISDIR(statbuf.st_mode) */
+//	    const std::string tmpstr = compose(path);
+	    struct stat statbuf;
+
+//	esp_log_level_set("CWD_emulating::change", ESP_LOG_DEBUG);	/* for debug purposes */
+
+	ESP_LOGD("EXEC::CWD::change", "Original value of the \"path\" parameter is: \"%s\"", path.c_str());
+	path = compose(std::move(path));
+	ESP_LOGD("EXEC::CWD::change", "Composed value of the \"path\" parameter is: \"%s\"", path.c_str());
+
+	if (astr::is_space(path))
+	{
+	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed");
+	    return ESP_FAIL;
+	}; /* if astr::is_space(tmpstr) */
+	// if dir changed to root - exclusively change dir
+	if (is_root(path))
+	    goto final;
+	if (stat(path.c_str(), &statbuf) == -1)
+	{
+	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
+		    "\t\t\t\tcurrent directory was not changing", path.c_str());
+	    return ESP_ERR_NOT_FOUND;
+	}; /* if stat(tmpstr.c_str(), &statbuf) == -1 */
+	ESP_LOGD("CWD_emulating::change_dir", "to %s which is a %s\n", path.c_str(),
+		statmode2txt(statbuf));
+	if (!S_ISDIR(statbuf.st_mode))
+	{
+	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not directory;\n"
+		    "\t\t\t\tleave current directory without changing", path.c_str());
+	    return ESP_ERR_NOT_SUPPORTED;
+	}; /* if !S_ISDIR(statbuf.st_mode) */
 
 final:
-    // copy tmpstr to pwd at the final
-    pwd = path;
+    // set current pwd value at the final
+    set(path);
+
     return ESP_OK;
 
 }; /* CWD::change() */
@@ -160,7 +155,7 @@ final:
 /// of the full file/path name
 //bool CWD_emulating::valid(const char path[])
  // FIXME Dirty code - need upgrading to correct usung std::string parameters
-bool CWD::valid(std::string/*&&*/ path)
+bool CWD::valid(std::string path)
 {
     //selective_log_level_set("Device::valid_path", ESP_LOG_DEBUG);	// for debug purposes
     ESP_LOGD(__PRETTY_FUNCTION__, "==== Call the fs::CWD_emulating::valid(std::string&&) procedure, std::string rvalue ref version ===");
@@ -306,6 +301,36 @@ bool CWD::valid(std::string/*&&*/ path)
 
     return true;
 }; /* CWD::valid_path() */
+
+
+    /// Force assign value of current working directory
+    /// Use carefully! Possible incorrect behavior!!!
+    void CWD::set(std::string str)
+    {
+	astr::trim(str);
+	if (str.empty())
+	    pwd = str;
+	else
+	    pwd = CWD::refine(str);
+
+    }; /* CWD::set() */
+
+
+    /// Tune-up any string for preparing as full path:
+    /// - trim both spaces;
+    /// - add leading symbol '/' (delimiter), if exist;
+    /// - remove tailing slash (delimiter), if exist;
+    std::string CWD::refine(std::string str)
+    {
+	str = astr::trim(str);
+	// if  string was ended from '/' - drop it
+	if (*str.end() == '/')
+	    str.erase(str.end());
+	// if  string was not started from '/' - add it
+	if (str[0] != '/')
+	    str.insert(str.begin(), '/');
+	return str;
+    }; /* CWD::refine() */
 
 
 

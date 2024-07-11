@@ -54,14 +54,14 @@ namespace Exec //---------------------------------------------------------------
     {
     public:
 	CWD(std::string mountpointdef = "", char delim = '/'):
-	    delimiter(delim), defmountpoint(mountpointdef)
+	    delimiter(delim), defmountpoint(CWD::refine(mountpointdef))
 	{/*esp_log_level_set("CWD_emulating:", ESP_LOG_DEBUG);*//* for debug purposes */};
 
 
 	// return current pwd (current dir) only, absent trailing slash in returned string is guaranteed
 	std::string get() const;
 	// return full path applied to a current dir
-	std::string compose(std::string);
+	std::string compose(std::string) const;
 	// get current operative path buffer - previous stored path on it
 //	std::string current() {return get();};
 	// the pwd dir is root?
@@ -75,9 +75,20 @@ namespace Exec //---------------------------------------------------------------
 	/// @brief Path validation - whatever the path exist or not -
 	/// any subpath is a valid existing path
 	/// @note method can modify fake_cwd::operative_path_buf
-	bool valid(std::string/*&&*/);
+	bool valid(std::string);
+
+	/// Tune-up any string for preparing as full path:
+	/// - add leading symbol '/' (delimiter), if exist
+	/// - remove tailing slash (delimiter), if exist
+	static
+	std::string refine(std::string);
+
+	/// Force assign value for current working directory
+	/// Use carefully! Possible incorrect behavior!!!
+	void set(std::string);
 
 	operator std::string() const {return get();};
+	CWD& operator = (const std::string& path) {set(path); return *this;};
 	CWD& operator /= (const std::string& path) {change(path); return *this;};
 
 
@@ -95,8 +106,8 @@ namespace Exec //---------------------------------------------------------------
 
     }; /* CWD */
 
-//    std::string operator + (const CWD_emulating& cwd, const std::string& path) {return cwd.compose(path);};
-    //std::string operator / (const CWD_emulating& cwd, const std::string& path) {return cwd.compose(path);};
+//    inline std::string operator + (const CWD_emulating& cwd, const std::string& path) {return cwd.compose(path);};
+    inline std::string operator / ( const CWD& cwd, std::string path) {return cwd.compose(path);};
 
 }; //--[ namespace Exec ]----------------------------------------------------------------------------------------------
 

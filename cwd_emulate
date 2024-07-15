@@ -21,13 +21,14 @@
 /// Text representation mode of statbuf (directory entry information)
 inline constexpr const char* statmode2txt(const struct stat* statbuf)
 {
-    return (S_ISLNK(statbuf->st_mode))? "symlink":
-	    (S_ISDIR(statbuf->st_mode))? "directory":
-	    (S_ISCHR(statbuf->st_mode))? "character device":
-	    (S_ISBLK(statbuf->st_mode))? "block device":
-	    (S_ISFIFO(statbuf->st_mode))? "FIFO channel":
-	    (S_ISSOCK(statbuf->st_mode))? "socket":
-					"(unknown type)";
+    return (S_ISLNK(statbuf->st_mode))? "+symlink+":
+	    (S_ISREG(statbuf->st_mode))? "-file-":
+	    (S_ISDIR(statbuf->st_mode))? "<DIR>":
+	    (S_ISCHR(statbuf->st_mode))? "{character device}":
+	    (S_ISBLK(statbuf->st_mode))? "{block device}":
+	    (S_ISFIFO(statbuf->st_mode))? "[FIFO channel]":
+	    (S_ISSOCK(statbuf->st_mode))? "/socket/":
+					"(*unknown type*)";
 }; /* statmode2txt() */
 
 /// Text representation mode of statbuf (directory entry information)
@@ -53,8 +54,9 @@ namespace Exec //---------------------------------------------------------------
     class CWD
     {
     public:
-	CWD(std::string mountpointdef = "", char delim = '/'):
-	    delimiter(delim), defmountpoint(CWD::refine(mountpointdef))
+	CWD(std::string mountpointdef = "", char delim = '/', std::string _parent = "..", std::string _curr = "."):
+	    delim_ch(delim), defmountpoint(CWD::refine(mountpointdef)),
+	    parent_str(std::move(_parent)), current_str(std::move(_curr))
 	{/*esp_log_level_set("CWD_emulating:", ESP_LOG_DEBUG);*//* for debug purposes */};
 
 
@@ -89,14 +91,42 @@ namespace Exec //---------------------------------------------------------------
 	CWD& operator = (const std::string& path) {set(path); return *this;};
 	CWD& operator /= (const std::string& path) {change(path); return *this;};
 
+	/// Return std::string, contens the directory parts delimiter
+	/*constexpr*/ std::string delimiter() const { return std::string(delim_ch, 1); };
+	/// Desoignation of the parent directory
+	constexpr const std::string& parent() const { return parent_str; };
+	/// Desoignation of the current directory
+	constexpr const std::string& current() const { return current_str; };
 
-	const char delimiter;	//< delimiter of directory parts
+	const char delim_ch;	//< char of directory parts delimiter
+
+	class last
+	{
+	public:
+	    int static state() { return err; };
+	    bool static is_exist() { return err == 0;};
+
+	    bool static is_link() { return S_ISLNK(statbuf.st_mode); };
+
+	    bool static is_reg()  { return S_ISREG(statbuf.st_mode); };
+	    bool static is_dir()  { return S_ISDIR(statbuf.st_mode); };
+	    bool static is_char() { return S_ISCHR(statbuf.st_mode); };
+	    bool static is_block(){ return S_ISBLK(statbuf.st_mode); };
+	    bool static is_fifo() { return S_ISFIFO(statbuf.st_mode); };
+	    bool static is_soscket() { return S_ISSOCK(statbuf.st_mode); };
+	}; /* class last */
 
 
     private:
 
 	const std::string defmountpoint;
 	std::string pwd;
+
+	const std::string parent_str;
+	const std::string current_str;
+
+	static int err;		//< error state of the last operation compose() etc.
+	static struct stat statbuf; //< file/directory existing status of the last operation compose() etc.
 
 	/// Sel log/debug level in the desired procedure
 	/// Usage: call in debugging procedure: selective_log_level_set("Device::valid_path", ESP_LOG_DEBUG);*/	/* for debug purposes */

@@ -107,7 +107,6 @@ namespace Exec //---------------------------------------------------------------
 	    bool static is_exist() { return err == 0;};
 
 	    bool static is_link() { return S_ISLNK(statbuf.st_mode); };
-
 	    bool static is_reg()  { return S_ISREG(statbuf.st_mode); };
 	    bool static is_dir()  { return S_ISDIR(statbuf.st_mode); };
 	    bool static is_char() { return S_ISCHR(statbuf.st_mode); };

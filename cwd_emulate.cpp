@@ -154,21 +154,18 @@ final:
 /// of a directory name, and a dirname (the path prefix) -
 /// is an existing file, not a directory, or any other impossible variants
 /// of the full file/path name
- // FIXME Dirty code - need upgrading to correct usung std::string parameters
 bool CWD::valid(std::string path)
 {
-    selective_log_level_set("Device::valid_path", ESP_LOG_DEBUG);	// for debug purposes
-    ESP_LOGW(__PRETTY_FUNCTION__, "==== Call the fs::CWD_emulating::valid(std::string) procedure, std::string own value version ===");
+    /*selective_log_level_set("Device::valid_path", ESP_LOG_DEBUG);*/	// for debug purposes
+    ESP_LOGD(__PRETTY_FUNCTION__, "==== Call the fs::CWD_emulating::valid(std::string) procedure, std::string own value version ===");
 
     path = astr::trim(std::move(path));
 
-//	struct stat st;
 	std::string base = basename(path.c_str());	// get a filename of a path
 
-/*esp_log_level_set("Device::valid_path", ESP_LOG_DEBUG);*//* for debug purposes */
-    ESP_LOGW(__PRETTY_FUNCTION__, "basename of the path is: \"%s\"", base.c_str());
-    ESP_LOGW(__PRETTY_FUNCTION__, "full path is: \"%s\"", path.c_str());
-    ESP_LOGW(__PRETTY_FUNCTION__, "dirname path is: \"%.*s\"", path.length() - base.length(), path.c_str());
+    ESP_LOGD(__PRETTY_FUNCTION__, "basename of the path is: \"%s\"", base.c_str());
+    ESP_LOGD(__PRETTY_FUNCTION__, "full path is: \"%s\"", path.c_str());
+    ESP_LOGD(__PRETTY_FUNCTION__, "dirname path is: \"%.*s\"", path.length() - base.length(), path.c_str());
 
     if (path.empty())
 	return true;	// ESP_LOGD("Device::valid_path", "path is empty, always valid");
@@ -186,61 +183,12 @@ bool CWD::valid(std::string path)
 	return true;	// ESP_LOGD("Device::valid_path", "Len of dirname is 1 or 0, then path is valid");
     }; /* if (base - path) < 2 */
 
-#if 0	// old variant of base-scan
-    // if base is not empty
-    if (!empty(base))
-	base--;	// set base to a last slash in the path
-    else
-    {
-	if (stat(compose(path).c_str(), &st) == 0)
-	    if (!S_ISDIR(st.st_mode))	// ESP_LOGD("Device::valid_path", "###!!! the path basename - is empty, test the path \"%s\" (real path is %s) exist and a directory... ###", path, fake_cwd.get_current());
-		return false;	// the path is invalid (inconsist) // ESP_LOGE("Device::valid_path", "Path \"%s\" (real path %s) is a file, but marked as a directory, it's invalid!!!", path, fake_cwd.get_current());
-	ESP_LOGD("Device::valid_path", "###!!! test dirname \"%s\" (real path is %s) preliminary is OK, seek to begin of last dir manually for continue test... ###", path.c_str(), current().c_str());
-	for (base -= 2; base > path; base--)
-	{
-	    ESP_LOGD("Device::valid_path", "=== base[0] is \"%c\" ===", base[0]);
-	    if (*base == '/')
-		break;
-	}; /* for base--; base > path; base-- */
-    }; /* if empty(base) */
-#else	// new variant of the base-scan
-
-//#define _WITH_BASEIDX_
-#ifdef _WITH_BASEIDX_
-
-    size_t base_idx = path.length() - base.length();
-    // if dirname is not empty
-    if (base_idx > 0)
-	base_idx--;	// set base to a last slash in the path
-    else return true;
-#else	// _WITH_BASEIDX_
-    //	auto base_scan = path.end() - base.length();
 	auto base_scan = path.crbegin() + base.length();	// for reversed scan
     // if dirname is not empty
     if (base_scan < path.crend())
 	base_scan++;	// set base to a last slash in the path
     else return true;
 
-#endif	// _WITH_BASEIDX_
-
-
-#if 0
-    else
-    {
-	if (stat(compose(path).c_str(), &st) == 0)
-	    if (!S_ISDIR(st.st_mode))	// ESP_LOGD("Device::valid_path", "###!!! the path basename - is empty, test the path \"%s\" (real path is %s) exist and a directory... ###", path, fake_cwd.get_current());
-		return false;	// the path is invalid (inconsist) // ESP_LOGE("Device::valid_path", "Path \"%s\" (real path %s) is a file, but marked as a directory, it's invalid!!!", path, fake_cwd.get_current());
-	ESP_LOGD("Device::valid_path", "###!!! test dirname \"%s\" (real path is %s) preliminary is OK, seek to begin of last dir manually for continue test... ###", path.c_str(), current().c_str());
-	/// Slide back to first '/' symbol
-	for (base_idx -= 2; base_idx > 0; base_idx--)
-	{
-	    ESP_LOGD("Device::valid_path", "=== path(base_idx) is \"%c\" ===", path[base_idx]);
-	    if (path[base_idx] == '/')
-		break;
-	}; /* for base_idx -= 2; base_idx > 0; base_idx-- */
-    }; /* if empty(base) */
-#endif	// 0
-#endif	// all base-scan variants
 
 #define sign_place 0x2	// with of the place for the sign
 #define point_sign 0x1	// mark a point symbol in a string
@@ -252,15 +200,17 @@ bool CWD::valid(std::string path)
 	unsigned int ctrl_cnt = init_pass;	// marked the firs pass of the control loop
 	unsigned int idx_ctrl = 0;
     // scan the dirname of the path for found '/.' or '/..' sequence
-#ifdef _WITH_BASEIDX_
-    for (auto scan = base_idx; scan > 0; scan--)
-    {
-	ESP_LOGD("Device::valid_path", "current char from the path is: '%c', ctrl_cnt is %2X", path[scan], ctrl_cnt);
 
-	switch (path[scan])
+    //    for (auto scan : path)
+    for (auto scan = base_scan; scan < path.crend(); scan++)
+    {
+	ESP_LOGD("Device::valid_path", "current char from the path is: '%c', ctrl_cnt is %2X", *scan, ctrl_cnt);
+
+	switch (*scan)
 	{
 	// solution point
 	case '/':
+	//case delim_ch:
 
 	    idx_ctrl = 0;	// reset the idx_ctrl
 	    ESP_LOGD("Device::valid_path", "###### Solution point: current path char ######");
@@ -288,75 +238,8 @@ bool CWD::valid(std::string path)
 		    continue;
 		}; /* if ctrl_cnt & alpha_present_mask */
 		ESP_LOGD(__PRETTY_FUNCTION__, "====== One or two point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", ctrl_cnt);
-//		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.c_str(), scan - path.c_str()));
-		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, base_idx)).c_str());
-//		if ((stat(compose(path, scan - path.c_str()).c_str(), &st) == 0)? !S_ISDIR(st.st_mode): (is_root(current()/*strcmp(current(), "/"*/) != 0))
-		std::string tmp = compose(path.substr(0, base_idx));
-//		if ((stat(compose(path.substr(0, base_idx)).c_str(), &st) == 0)? !S_ISDIR(st.st_mode): is_root(get()))
-		if ((stat(tmp.c_str(), &st) == 0)? !S_ISDIR(st.st_mode): is_root(tmp))
-		    return false;
-	    }; /* switch ctrl_cnt */
-	    ctrl_cnt = 0;
-	    break;
-
-	// point symbol handling
-	case '.':
-	    [[fallthrough]];
-	// all other symbols
-	default:
-
-	    if (idx_ctrl < 3)
-//		ctrl_cnt |= (((scan[0] == '.')? point_sign: alpha_sign) << idx_ctrl++ * sign_place);
-		ctrl_cnt |= (((path[scan] == '.')? point_sign: alpha_sign) << idx_ctrl++ * sign_place);
-	    // ESP_LOGD("Device::valid_path", "%d symbol of the processing substring, symbol is \"%c\"", idx_ctrl, scan[0]);
-	}; /* switch path[scan] */
-    }; /* for char* scan = base; scan >= path; scan-- */
-#else	// _WITH_BASEIDX_
-
-	//    for (auto scan : path)
-    for (auto scan = base_scan; scan < path.crend(); scan++)
-  //  for (auto scan = base_idx; scan > 0; scan--)
-    {
-	ESP_LOGW("Device::valid_path", "current char from the path is: '%c', ctrl_cnt is %2X", *scan, ctrl_cnt);
-
-	switch (*scan)
-	{
-	// solution point
-	case '/':
-	//case delim_ch:
-
-	    idx_ctrl = 0;	// reset the idx_ctrl
-	    ESP_LOGW("Device::valid_path", "###### Solution point: current path char ######");
-	    switch (ctrl_cnt)
-	    {
-	    // double slash - prev symbol is slash
-	    case 0:
-		ESP_LOGW("Device::valid_path", "**** double slash and more - is not valid sequence in the path name ****");
-		return false;
-
-	    case three_point_mark:
-		// if more then 3 point sequence in substring
-		ESP_LOGW("Device::valid_path", "3 point or more sequence is present in current substring - nothing to do, continue");
-		break;
-
-	    case init_pass:
-		ESP_LOGW(__PRETTY_FUNCTION__, "++++++ The first pass of the control loop ++++++");
-		[[fallthrough]];
-	    default:
-		// if non point sign is present in tested substring
-		if (ctrl_cnt & alpha_present_mask)
-		{
-		    ESP_LOGW("Device::valid_path", "alpha or other then point or slash symbol is present in current processing substring - test subpath for exist, continue");
-		    ctrl_cnt = 0;
-		    continue;
-		}; /* if ctrl_cnt & alpha_present_mask */
-		ESP_LOGW(__PRETTY_FUNCTION__, "====== One or two point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", ctrl_cnt);
-//		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.c_str(), scan - path.c_str()));
-		ESP_LOGW(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, std::distance(scan, path.crend()))).c_str());
-//		if ((stat(compose(path, scan - path.c_str()).c_str(), &st) == 0)? !S_ISDIR(st.st_mode): (is_root(current()/*strcmp(current(), "/"*/) != 0))
+		ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, std::distance(scan, path.crend()))).c_str());
 		std::string tmp = compose(path.substr(0, std::distance(scan, path.crend())));
-//		if ((stat(compose(path.substr(0, base_idx)).c_str(), &st) == 0)? !S_ISDIR(st.st_mode): is_root(get()))
-		//if ((stat(tmp.c_str(), &st) == 0)? !S_ISDIR(st.st_mode): is_root(tmp))
 		if ((last::is_exist() && !last::is_dir()) || is_root(tmp))
 		    return false;
 	    }; /* switch ctrl_cnt */
@@ -370,13 +253,10 @@ bool CWD::valid(std::string path)
 	default:
 
 	    if (idx_ctrl < 3)
-//		ctrl_cnt |= (((scan[0] == '.')? point_sign: alpha_sign) << idx_ctrl++ * sign_place);
 		ctrl_cnt |= (((*scan == '.')? point_sign: alpha_sign) << idx_ctrl++ * sign_place);
-	    // ESP_LOGD("Device::valid_path", "%d symbol of the processing substring, symbol is \"%c\"", idx_ctrl, scan[0]);
+	    // ESP_LOGD("Device::valid_path", "%d symbol of the processing substring, symbol is \"%c\"", idx_ctrl, *scan);
 	}; /* switch path[scan] */
-    }; /* for char* scan = base; scan >= path; scan-- */
-
-#endif	// _WITH_BASEIDX_
+    }; /* for auto scan = base_scan; scan < path.crend(); scan++ */
 
     return true;
 }; /* CWD::valid() */

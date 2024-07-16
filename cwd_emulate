@@ -127,10 +127,6 @@ namespace Exec //---------------------------------------------------------------
 	static int err;		//< error state of the last operation compose() etc.
 	static struct stat statbuf; //< file/directory existing status of the last operation compose() etc.
 
-	/// Sel log/debug level in the desired procedure
-	/// Usage: call in debugging procedure: selective_log_level_set("Device::valid_path", ESP_LOG_DEBUG);*/	/* for debug purposes */
-	void selective_log_level_set(const char tag[], esp_log_level_t level) {esp_log_level_set(tag, level);};
-
     }; /* CWD */
 
 //    inline std::string operator + (const CWD_emulating& cwd, const std::string& path) {return cwd.compose(path);};

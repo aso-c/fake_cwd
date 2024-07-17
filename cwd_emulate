@@ -104,7 +104,7 @@ namespace Exec //---------------------------------------------------------------
 	{
 	public:
 	    int static state() { return err; };
-	    bool static is_exist() { return err == 0;};
+	    bool static exist() { return err == 0;};
 
 	    bool static is_link() { return S_ISLNK(statbuf.st_mode); };
 	    bool static is_reg()  { return S_ISREG(statbuf.st_mode); };
@@ -113,6 +113,11 @@ namespace Exec //---------------------------------------------------------------
 	    bool static is_block(){ return S_ISBLK(statbuf.st_mode); };
 	    bool static is_fifo() { return S_ISFIFO(statbuf.st_mode); };
 	    bool static is_soscket() { return S_ISSOCK(statbuf.st_mode); };
+
+	    /// Type of the last path, that was operated
+	    static const char* type() { return statmode2txt(statbuf); };
+	    /// Size of the last operated file - in bytes
+	    off_t static size() { return statbuf.st_size; };
 	}; /* class last */
 
 

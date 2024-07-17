@@ -116,7 +116,7 @@ namespace Exec	//---------------------------------------------------------------
 	// if dir changed to root - exclusively change dir
 	if (is_root(path))
 	    goto final;
-	if (!last::is_exist())
+	if (!last::exist())
 	{
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
 		    "\t\t\t\tcurrent directory was not changing", path.c_str());
@@ -164,7 +164,7 @@ final:
     /// and return 'false' in this case
     bool CWD::valid(std::string path)
     {
-	esp_log_level_set("CWD::valid", ESP_LOG_DEBUG);	/* for debug purposes */
+	//esp_log_level_set("CWD::valid", ESP_LOG_DEBUG);	/* for debug purposes */
 
 	ESP_LOGD("CWD::valid", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
 
@@ -238,7 +238,7 @@ final:
 		    ESP_LOGD(__PRETTY_FUNCTION__, "====== One or two point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", ctrl_cnt);
 		    ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, std::distance(scan, path.crend()))).c_str());
 		    std::string tmp = compose(path.substr(0, std::distance(scan, path.crend())));
-		    if ((last::is_exist() && !last::is_dir()) || is_root(tmp))
+		    if ((last::exist() && !last::is_dir()) || is_root(tmp))
 			return false;
 		}; /* switch ctrl_cnt */
 		ctrl_cnt = sign::slash;

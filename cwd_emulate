@@ -82,6 +82,7 @@ namespace fs	//-----------------------------------------------------------------
 	    entry(entry& ent): data(ent.data), owner(ent.owner) {};
 
 	    const dirent& get() const { return *data;};
+	    const dirent& operator *() const { return get();};
 
 	    entry& operator =(const entry& oth) { data = oth.data; owner = oth.owner; return *this;};
 
@@ -105,16 +106,6 @@ namespace fs	//-----------------------------------------------------------------
 
 
     bool inline operator ==(const Directory::entry& it, const Directory::entry& other) {
-	ESP_LOGW("operator == for fs::Directory",
-		"Comparing items:\n"
-		"it.owner: %p, other.owner: %p\n"
-		"it.data: %p, other.data: %p", it.owner, other.owner, it.data, other.data );
-	ESP_LOGW("operator == for fs::Directory", "Result of comparsion calculation is: [%s]",
-		(it.owner == other.owner) && (it.data == other.data)? "true": "false");
-
-
-
-
 	return (it.owner == other.owner) && (it.data == other.data); };
     bool inline operator ==(const Directory::entry& it, nullptr_t nil) { return it.data == nil; };
     bool inline operator ==(nullptr_t nil, const Directory::entry& it) { return it == nil; };

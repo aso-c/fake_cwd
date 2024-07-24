@@ -3,14 +3,15 @@
  * Implementation file
  * 	@file	cwd_emulate
  *	@author	(Solomatov A.A. (aso)
- *	Created	27.04.2024
- *	Version	0.3
+ *	@date Created 27.04.2024
+ *	      Updated 19.07.2024
+ *	Version	0.9
  */
 
 
 
 
-#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG	// 4 - set 'DEBUG' logging level
+//#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG	// 4 - set 'DEBUG' logging level
 
 #include <limits>
 #include <cstdio>
@@ -36,8 +37,9 @@
 #include "cwd_emulate"
 
 
-#include "extrstream"
-#include "astring.h"
+#include <extrstream>
+#include <astring.h>
+#include <reversing.hpp>
 
 using namespace std;
 
@@ -140,20 +142,32 @@ final:
     }; /* CWD::change() */
 
 
-    /// Control values for parsing a path
-    class sign {
+    /// Control parsing a path
+    class mark
+    {
     public:
-	constexpr static unsigned int place = 0x2;	/*!< place for the sign */
-	constexpr static unsigned int slash = 0x0;	/*!< slash char in the prev pass */
-	constexpr static unsigned int point = 0x1;	/*!< the "point" sign */
-	constexpr static unsigned int alpha = 0x2;	/*!< any aplhabetical sign */
-	    /*! mark for initial pass */
-	constexpr static unsigned int init = (0x3 << 4*place);
-	    /*! mask if alphabetical chars is present */
-	constexpr static unsigned int mask_aplpha = (alpha | (alpha << 1*place) | (alpha << 2*place));
-	    /*! mask if three point present */
-	constexpr static unsigned int mark_three = (point | (point << 1*place) | (point << 2*place));
-    }; /* class sign */
+
+	mark(): ctrl(init), cnt(0) {};
+
+	/// marker id of the parced char enum
+	enum id {
+	    init  = 0x0,	/*!< the initial state */
+	    alpha = 0x1,	/*!< any aplhabetical sign */
+	    point = 0x2,	/*!< the "point" sign */
+	    mixed = 0x3,	/*!< mixed sign's - point & alphabetical */
+	    slash = 0x4,	/*!< slash char in the prev pass */
+	}; /* enum id */
+
+	id ctrl;	///< mark the precedence parced char or sequence
+	unsigned int cnt;///< char sequence counter
+
+	static constexpr unsigned int pt_max = 2;	///< valid point sequence maximum length
+	static constexpr unsigned int slash_max = 1;	///< valid slash sequence maximum length
+
+    }; /* class mark */
+
+//    sign::mark sign::ctrl = mark::init; ///< mark the parced char
+//    unsigned int sign::cnt = 0;	    ///< char sequence counter
 
 
 
@@ -164,7 +178,8 @@ final:
     /// and return 'false' in this case
     bool CWD::valid(std::string path)
     {
-	//esp_log_level_set("CWD::valid", ESP_LOG_DEBUG);	/* for debug purposes */
+	esp_log_level_set("CWD::valid", ESP_LOG_DEBUG);	/* for debug purposes */
+	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
 
 	ESP_LOGD("CWD::valid", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
 
@@ -172,9 +187,9 @@ final:
 
 	    size_t base_len = strlen(basename(path.c_str()));
 
-	ESP_LOGD("CWD::valid", "basename of the path is: \"%s\"", path.c_str() + path.length() - base_len);
-	ESP_LOGD("CWD::valid", "full path is: \"%s\"", path.c_str());
-	ESP_LOGD("CWD::valid", "dirname path is: \"%.*s\"", path.length() - base_len, path.c_str());
+	ESP_LOGD("CWD::valid()", "basename of the path is: \"%s\"", path.c_str() + path.length() - base_len);
+	ESP_LOGD("CWD::valid()", "full path is: \"%s\"", path.c_str());
+	ESP_LOGD("CWD::valid()", "dirname path is: \"%.*s\"", path.length() - base_len, path.c_str());
 
 	if (path.empty())
 	    return true;	// ESP_LOGD("CWD::valid", "path is empty, always valid");
@@ -194,65 +209,160 @@ final:
 	if (!(path.length() > base_len))
 	    return true;
 
+#if 0
+	enum class sign_mark {
+	    init  = 0x0,	/*!< the initial state */
+	    alpha = 0x1,	/*!< any aplhabetical sign */
+	    point = 0x2,	/*!< the "point" sign */
+	    mixed = 0x3,	/*!< mixed sign's - point & alphabetical */
+	    slash = 0x4,	/*!< slash char in the prev pass */
+	}; /* enum class sign_mark */
 
-		unsigned int ctrl_cnt = sign::init;	// marked the firs pass of the control loop
-		unsigned int idx_ctrl = 0;
+	    constexpr unsigned int sign_pt_max = 2;	// valid point sequence maximum length
+	    constexpr unsigned int sign_slash_max = 2;	// valid slash sequence maximum length
+//	    unsigned int sign_ctrl = sign::init;	// marked the firs pass of the control loop
+	    unsigned int sign_cnt = 0;
+	    sign_mark sign_ctrl = sign_mark::init;	// marked the firs pass of the control loop
+#endif
 
 	// scan the dirname of the path for found '/.' or '/..' sequence
     //    for (auto scan : path)
-	for (auto scan = path.crbegin() + base_len + 1; scan < path.crend(); scan++)
+    //	for (auto scan = path.crbegin() + base_len + 1; scan < path.crend(); scan++)
+//        for (const char &scan: aso::adaptors::const_reverse(path, base_len + 1))
+	//sign::cnt = 0;
+	//sign::ctrl = sign::init;
+	    mark sign;
+        for (const char &scan: aso::adaptors::constant::reverse(path, base_len + 1))
 	{
-	    ESP_LOGD("CWD::valid", "current char from the path is: '%c', ctrl_cnt is %2X", *scan, ctrl_cnt);
+	    ESP_LOGD("CWD::valid()", "current char from the path is: '%c', sign::ctrl is %2X, sign::cnt = %u", /***/scan,
+					(unsigned)sign.ctrl, sign.cnt);
+	    if (&scan == path.c_str())
+	    {
+		ESP_LOGD("CWD::valid()", "###### Final sequence processing: additional solution point: current path char is %c ######", scan);
 
-	    switch (*scan)
+	    }; /* if &scan == &(*path.crend()) */
+	    switch (/***/scan)
 	    {
 	    // solution point
 	    case '/':
 	    //case delim_ch:
 
-		idx_ctrl = 0;	// reset the idx_ctrl
-		ESP_LOGD("CWD::valid", "###### Solution point: current path char ######");
-		switch (ctrl_cnt)
+//		std::string tmp;
+//		sign_cnt = 0;	// reset the sign_cnt
+		ESP_LOGD("CWD::valid()", "###### Solution point: current path char is '/' ######");
+		switch (sign.ctrl)
 		{
-		// double slash - prev symbol is slash
-		case sign::slash:
-		    ESP_LOGD("CWD::valid", "**** double slash and more - is not valid sequence in the path name ****");
-		    return false;
-
-		case sign::mark_three:
-		    // if more then 3 point sequence in substring
-		    ESP_LOGD("CWD::valid", "3 point or more sequence is present in current substring - nothing to do, continue");
+		// initial state - nothing to do
+		case mark::init:
+		    ESP_LOGD("CWD::valid()", "++++++ The first pass of the control loop ++++++");
+//		    /*std::string*/ tmp = compose(path.substr(0, &scan - path.data()));
+//		    if ((last::exist() && !last::is_dir()) || is_root(tmp))
+//			return false;
+//		    sign::ctrl = sign::mark::slash;
 		    break;
 
-		case sign::init:
-		    ESP_LOGD(__PRETTY_FUNCTION__, "++++++ The first pass of the control loop ++++++");
+		// double slash - prev symbol is slash
+		case mark::slash:
+		    ESP_LOGD("CWD::valid()", "**** double slash and more - is not valid sequence in the path name ****");
+		    return false;
+
+		case mark::point:
+		    // if more then 3 point sequence in substring
+		    if (sign.cnt > sign.pt_max)
+		    {
+			ESP_LOGD("CWD::valid()", "3 point or more sequence is present in current substring - invalid sequence, return");
+			return false;
+		    };
+//		    /*std::string*/ tmp = compose(path.substr(0, &scan - path.data()));
+		    ESP_LOGD("CWD::valid()", "====== The %u point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", sign.cnt, sign.ctrl);
+//		    if ((last::exist() && !last::is_dir()) || is_root(tmp))
+//			return false;
+		    break;
+
+//		case sign::mark::init:
+//		    ESP_LOGD(__PRETTY_FUNCTION__, "++++++ The first pass of the control loop ++++++");
+//		    [[fallthrough]];
+		case mark::mixed:
+//		    if (sign::ctrl & sign::mask_aplpha)
+//		    {
+			ESP_LOGD("CWD::valid()", "alpha or other then point or slash symbol is present in current processing substring - test subpath for exist, continue");
+//			sign::ctrl = sign::mark::mixed;
+//			continue;
+//		    }; /* if ctrl_cnt & alpha_present_mask */
+		    ESP_LOGD("CWD::valid()", "====== One or two point sequence in the current meaning substring, sign::ctrl is %2X, test current subpath for existing ======", sign.ctrl);
 		    [[fallthrough]];
 		default:
 		    // if non point sign is present in tested substring
-		    if (ctrl_cnt & sign::mask_aplpha)
-		    {
-			ESP_LOGD("CWD::valid", "alpha or other then point or slash symbol is present in current processing substring - test subpath for exist, continue");
-			ctrl_cnt = 0;
-			continue;
-		    }; /* if ctrl_cnt & alpha_present_mask */
-		    ESP_LOGD(__PRETTY_FUNCTION__, "====== One or two point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", ctrl_cnt);
-		    ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, std::distance(scan, path.crend()))).c_str());
-		    std::string tmp = compose(path.substr(0, std::distance(scan, path.crend())));
-		    if ((last::exist() && !last::is_dir()) || is_root(tmp))
-			return false;
+//		    ESP_LOGD(__PRETTY_FUNCTION__, "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, &scan - path.data() /*std::distance(scan, path.crend())*/)).c_str());
+//		    std::string tmp = compose(path.substr(0, &scan - path.data() /*std::distance(scan, path.crend())*/));
+//		    if ((last::exist() && !last::is_dir()) || is_root(tmp))
+//			return false;
+		    ;
 		}; /* switch ctrl_cnt */
-		ctrl_cnt = sign::slash;
+		ESP_LOGD("CWD::valid()", "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, &scan - path.data() /*std::distance(scan, path.crend())*/)).c_str());
+//		std::string tmp = compose(path.substr(0, &scan - path.data() /*std::distance(scan, path.crend())*/));
+//		if ((last::exist() && !last::is_dir()) || is_root(tmp))
+		// NOTE! depends on the calculation order!!! - is_root() must be calculated first!!!
+		if (!is_root(compose(path.substr(0, &scan - path.data()))) || (last::exist() && !last::is_dir()))
+		    return false;
+		sign.ctrl = mark::slash;
 		break;
 
 		// point symbol handling
 	    case '.':
+		switch (sign.ctrl)
+		{
+		case mark::alpha:
+		    sign.cnt = 2;
+		    sign.ctrl = mark::mixed;
+		    break;
+
+		case mark::point:
+		    sign.cnt++;
+		    break;
+
+		case mark::mixed:
+		    break;
+
+		case mark::init:
 		[[fallthrough]];
+		case mark::slash:
+		[[fallthrough]];
+		default:
+		    sign.cnt = 1;
+		    sign.ctrl = mark::point;
+		}; /* switch (sign_ctrl) */
+		break;
+
 		// all other symbols
 	    default:
 
-		if (idx_ctrl < 3)
-		    ctrl_cnt |= (((*scan == '.')? sign::point: sign::alpha) << idx_ctrl++ * sign::place);
-		ESP_LOGD("CWD::valid", "%d symbol of the processing substring, symbol is \"%c\"", idx_ctrl, *scan);
+		switch (sign.ctrl)
+		{
+		case mark::alpha:
+		    sign.cnt++;
+		    break;
+
+		case mark::point:
+		    sign.cnt = 2;
+		    sign.ctrl = mark::mixed;
+		    break;
+
+		case mark::mixed:
+		    break;
+
+		case mark::init:
+		[[fallthrough]];
+		case mark::slash:
+		[[fallthrough]];
+		default:
+		    sign.cnt = 1;
+		    sign.ctrl = mark::alpha;
+		}; /* switch (sign_ctrl) */
+
+//		if (sign_cnt < 3)
+//		    sign_ctrl |= (((/***/scan == '.')? sign::point: sign::alpha) << sign_cnt++ * sign::place);
+		ESP_LOGD("CWD::valid()", "%d symbol of the processing substring, symbol is \"%c\"", sign.cnt, /***/scan);
 	    }; /* switch *scan */
 	}; /* for auto scan = path.crbegin() + base_len + 1; scan < path.crend(); scan++ */
 

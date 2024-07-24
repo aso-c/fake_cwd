@@ -165,7 +165,7 @@ namespace Exec //---------------------------------------------------------------
 
 	/// Return std::string, contens the directory parts delimiter
 	/*constexpr*/ std::string delimiter() const { return std::string(delim_ch, 1); };
-	/// Desoignation of the parent directory
+	/// Designation of the parent directory
 	constexpr const std::string& parent() const { return parent_str; };
 	/// Desoignation of the current directory
 	constexpr const std::string& current() const { return current_str; };

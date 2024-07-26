@@ -199,8 +199,8 @@ final:
 //	    return true;	// ESP_LOGD("CWD::valid", "path is empty, always valid");
 
 	// if full path length - one char only, it's a root or one char base, without dir
-	if (path.length() == 1)
-	    return true;	// ESP_LOGD("Device::valid_path", "len of the path - is 1, always valid");
+//	if (path.length() == 1)
+//	    return true;	// ESP_LOGD("Device::valid_path", "len of the path - is 1, always valid");
 
 	// if path - only base, not a dir, or a dirname - one symbol length (it can only be the slash)
 	if ((path.length() - base_len) < 2)
@@ -210,8 +210,8 @@ final:
 	    return true;	// ESP_LOGD("Device::valid_path", "Len of dirname is 1 or 0, then path is valid");
 	}; /* if (base - path) < 2 */
 
-	if (!(path.length() > base_len))
-	    return true;
+//	if (!(path.length() > base_len))
+//	    return true;
 
 	//------------------------------------
 	    mark sign;
@@ -224,21 +224,6 @@ final:
 	    // solution point
 	    case '/':
 	    //case delim_ch:
-
-//		// If base part of filename processing
-//		if (sign.phase == mark::tag::base)
-//		{
-//		    // shield if impossible len sequence of points
-//		    if (sign.ctrl == mark::point && sign.cnt > mark::pt_max)
-//			return false;
-//		    compose(path);
-//		    // mark the next parts - is must exist or optionally
-//		    if (CWD::last::exist())
-//			sign.phase = mark::tag::mandatory;
-//		    else sign.phase = mark::tag::optional;
-//		    sign.ctrl = mark::slash;
-//		    continue;	// next pass of the loop
-//		}; /* if sign.phase == mark::tag::base */
 
 		compose(path.substr(0, &scan - path.data()));	// Check the processed part path is exist or a not
 
@@ -259,8 +244,6 @@ final:
 			    sign.phase = mark::tag::mandatory;
 			else return false;
 		    else sign.phase = mark::tag::optional;
-//		    sign.ctrl = mark::slash;
-//		    continue;	// to next pass of the loop
 		    break;
 
 		// double slash - prev symbol is slash
@@ -284,25 +267,38 @@ final:
 		    [[fallthrough]];
 		default:
 		// If base part of filename processing
-		    if (sign.phase == mark::tag::base)
+//		    if (sign.phase == mark::tag::base)
+		    switch (sign.phase)
 		    {
-//		        // shield if impossible len sequence of points
-//		        if (sign.ctrl == mark::point && sign.cnt > mark::pt_max)
-//		            return false;
-//		        compose(path);
-		        // mark the next parts - is must exist or optionally
+		    case mark::tag::base:
+//		        if (CWD::last::exist())
+//		            sign.phase = mark::tag::mandatory;
+//		        else sign.phase = mark::tag::optional;
+		        sign.phase = CWD::last::exist()? mark::tag::mandatory: mark::tag::optional;
+		        break;
+
+		    case mark::tag::optional:
+			// subpath must be unexist or must be is directory
 		        if (CWD::last::exist())
-		            sign.phase = mark::tag::mandatory;
-		        else sign.phase = mark::tag::optional;
-		    //    sign.ctrl = mark::slash;
-		    //		    continue;	// next pass of the loop
-		    }; /* if sign.phase == mark::tag::base */
+		        {
+		            if (CWD::last::is_dir())
+		        	sign.phase = mark::tag::mandatory;
+		            else
+		        	return false;
+		        }
+		        break;
+
+		    case mark::tag::mandatory:
+			// subpath must be exist && must be is directory
+		        if (!CWD::last::exist() || !CWD::last::is_dir())
+		            return false;
+
+		    }; /* switch sign.phase */
+//		    }; /* if sign.phase == mark::tag::base */
 		    ;
 		}; /* switch ctrl_cnt */
+
 		//ESP_LOGD("CWD::valid()", "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, &scan - path.data())).c_str());
-		/// NOTE! depends on the calculation order!!! - is_root() must be calculated first!!!
-//		if (!is_root(compose(path.substr(0, &scan - path.data()))) || (last::exist() && !last::is_dir()))
-//		    return false;
 		sign.ctrl = mark::slash;
 		break;
 

@@ -195,25 +195,6 @@ final:
 	ESP_LOGD("CWD::valid()", "full path is: \"%s\"", path.c_str());
 	ESP_LOGD("CWD::valid()", "dirname path is: \"%.*s\"", path.length() - base_len, path.c_str());
 
-//	if (path.empty())
-//	    return true;	// ESP_LOGD("CWD::valid", "path is empty, always valid");
-
-	// if full path length - one char only, it's a root or one char base, without dir
-//	if (path.length() == 1)
-//	    return true;	// ESP_LOGD("Device::valid_path", "len of the path - is 1, always valid");
-
-	// if path - only base, not a dir, or a dirname - one symbol length (it can only be the slash)
-	if ((path.length() - base_len) < 2)
-	{
-	    if (path == delimiter() + parent())	//< if path == '/..' - it's invalid
-		return false;
-	    return true;	// ESP_LOGD("Device::valid_path", "Len of dirname is 1 or 0, then path is valid");
-	}; /* if (base - path) < 2 */
-
-//	if (!(path.length() > base_len))
-//	    return true;
-
-	//------------------------------------
 	    mark sign;
         for (const char &scan: aso::adaptors::constant::reverse(path/*, base_len + 1*/))
 	{
@@ -221,7 +202,7 @@ final:
 					(unsigned)sign.ctrl, sign.cnt);
 	    switch (scan)
 	    {
-	    // solution point
+	    // decision point
 	    case '/':
 	    //case delim_ch:
 
@@ -233,7 +214,6 @@ final:
 		// initial state - nothing to do
 		case mark::init:
 		    ESP_LOGD("CWD::valid()", "++++++ The first pass of the control loop ++++++");
-//		    if (is_root(compose(path.substr(0, &scan - path.data()))))
 		    // Check pre-condition path validity
 		    if (path.empty())
 			return true;
@@ -258,20 +238,6 @@ final:
 			ESP_LOGD("CWD::valid()", "3 point or more sequence is present in current substring - invalid sequence, return");
 			return false;
 		    };
-		    // Processing the "base" state in decision piont
-		    if (sign.phase == mark::tag::base)
-		    {
-			// Check the full path
-			compose(path);
-			// set precoditions with fill path for check
-			// for check the dirname of the full path
-			if (CWD::last::exist())
-			    if (CWD::last::is_dir())
-				sign.phase = mark::tag::mandatory;
-			    else return false;	// if basename '.' or '..' - it's must be a directory
-			else sign.phase = mark::tag::optional;
-			compose(path.substr(0, &scan - path.data()));	// Check the processed part path is exist or a not
-		    }; /* if sign.phase == mark::tag::base */
 		    ESP_LOGD("CWD::valid()", "====== The %u point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", sign.cnt, sign.ctrl);
 //		    break;
 		    [[fallthrough]];
@@ -280,8 +246,7 @@ final:
 		    ESP_LOGD("CWD::valid()", "Or mix point & alpha symbol is present in current processing substring - test subpath for exist");
 		    [[fallthrough]];
 		default:
-		// If base part of filename processing
-//		    if (sign.phase == mark::tag::base)
+		    // If base part of filename processing
 		    switch (sign.phase)
 		    {
 		    case mark::tag::base:	// only for alphabetical or mixed basename, for 'point' char - interceped
@@ -329,10 +294,18 @@ final:
 		case mark::mixed:
 		    break;
 
-		case mark::init:
-		[[fallthrough]];
+		case mark::init:	// preset in initial state
+		    if (path == "/..")	// impossible path - invalid name
+			return false;
+		    compose(path);
+		    if (CWD::last::exist())
+			sign.phase = mark::tag::mandatory;
+		    else sign.phase = mark::tag::optional;
+		    [[fallthrough]];
+
 		case mark::slash:
-		[[fallthrough]];
+		    [[fallthrough]];
+
 		default:
 		    sign.cnt = 1;
 		    sign.ctrl = mark::point;
@@ -357,7 +330,11 @@ final:
 		    break;
 
 		case mark::init:
-		[[fallthrough]];
+		    compose(path);
+		    if (CWD::last::exist())
+			sign.phase = mark::tag::mandatory;
+		    else sign.phase = mark::tag::optional;
+		    [[fallthrough]];
 		case mark::slash:
 		[[fallthrough]];
 		default:
@@ -373,15 +350,6 @@ final:
 		ESP_LOGD("CWD::valid()", "###### End of sequence processing, first char is reached: additional solution point: current path char is %c ######", scan);
 
 	    }; /* if &scan == &(*path.crend()) */
-
-#if 0	// Not needed this
-	    /// Final decision points of the pass
-	    if (scan == '/' || &scan == path.data())
-	    {
-
-	    }; /* if scan == '/' || &scan == path.data() */
-#endif	// 0 - Not needed this
-
 
 
 	}; /* for const char &scan: aso::adaptors::constant::reverse(path, base_len + 1) */

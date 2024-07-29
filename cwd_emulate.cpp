@@ -258,6 +258,20 @@ final:
 			ESP_LOGD("CWD::valid()", "3 point or more sequence is present in current substring - invalid sequence, return");
 			return false;
 		    };
+		    // Processing the "base" state in decision piont
+		    if (sign.phase == mark::tag::base)
+		    {
+			// Check the full path
+			compose(path);
+			// set precoditions with fill path for check
+			// for check the dirname of the full path
+			if (CWD::last::exist())
+			    if (CWD::last::is_dir())
+				sign.phase = mark::tag::mandatory;
+			    else return false;	// if basename '.' or '..' - it's must be a directory
+			else sign.phase = mark::tag::optional;
+			compose(path.substr(0, &scan - path.data()));	// Check the processed part path is exist or a not
+		    }; /* if sign.phase == mark::tag::base */
 		    ESP_LOGD("CWD::valid()", "====== The %u point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", sign.cnt, sign.ctrl);
 //		    break;
 		    [[fallthrough]];
@@ -270,10 +284,7 @@ final:
 //		    if (sign.phase == mark::tag::base)
 		    switch (sign.phase)
 		    {
-		    case mark::tag::base:
-//		        if (CWD::last::exist())
-//		            sign.phase = mark::tag::mandatory;
-//		        else sign.phase = mark::tag::optional;
+		    case mark::tag::base:	// only for alphabetical or mixed basename, for 'point' char - interceped
 		        sign.phase = CWD::last::exist()? mark::tag::mandatory: mark::tag::optional;
 		        break;
 
@@ -294,9 +305,8 @@ final:
 		            return false;
 
 		    }; /* switch sign.phase */
-//		    }; /* if sign.phase == mark::tag::base */
 		    ;
-		}; /* switch ctrl_cnt */
+		}; /* switch sign.ctrl */
 
 		//ESP_LOGD("CWD::valid()", "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, &scan - path.data())).c_str());
 		sign.ctrl = mark::slash;

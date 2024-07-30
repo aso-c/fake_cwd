@@ -3,8 +3,9 @@
  * Header Include file
  * 	@file	cwd_emulate
  *	@author	(Solomatov A.A. (aso)
- *	Created	27.04.2024
- *	Version	0.3
+ *	@date Created 27.04.2024
+ *	      Updated 29.07.2024
+ *	Version	1.0
  */
 
 
@@ -164,7 +165,7 @@ namespace Exec //---------------------------------------------------------------
 	CWD& operator /= (const std::string& path) {change(path); return *this;};
 
 	/// Return std::string, contens the directory parts delimiter
-	/*constexpr*/ std::string delimiter() const { return std::string(delim_ch, 1); };
+	std::string delimiter() const { return std::string(delim_ch, 1); };
 	/// Designation of the parent directory
 	constexpr const std::string& parent() const { return parent_str; };
 	/// Desoignation of the current directory

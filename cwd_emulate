@@ -44,7 +44,79 @@ namespace fs	//-----------------------------------------------------------------
     /// if path - is absolute path
     inline bool absolute_path(const char path[]) { return (path[0] == '/'); };
     inline bool absolute_path(const std::string& path) { return !path.empty() && (path.front() == '/'); };
+
+
+    /// Directory representation class
+    class Directory
+    {
+    public:
+	Directory(std::string path): dirname(path) {};
+	~Directory() { if (dir) close();};
+
+	class entry;
+
+	/// if directory not opened - set the new name, return old name; else - return new name and nothing to do
+	std::string name(std::string newnm) { if (!dir) std::swap(dirname, newnm); return newnm; };
+	/// return current directory name
+	std::string name() { return dirname; };
+	DIR *open() { dir = opendir(dirname.c_str()); return dir; };
+	int close() { err = closedir(dir); dir = nullptr; return err;};
+
+	entry read() { return entry(this, read_raw());};
+	void rewind() { rewinddir(dir); };
+	void seek(off_t offset) { seekdir(dir, offset); };
+	off_t tell() { return telldir(dir); };
+	/*int scandir(const char *dir, struct dirent ***namelist,
+			int(*select)(const struct dirent *),
+			int(*compar)(const struct dirent **, const struct dirent **));*/
+
+	entry begin() { if (!dir) open(); return read(); };
+	entry end() { return entry(this, nullptr); };
+
+	operator bool() { return dir != nullptr; };
+
+	class entry
+	{
+	public:
+	    entry(Directory* dir, dirent* entdata = nullptr): data(entdata), owner(dir) {};
+	    entry(entry& ent): data(ent.data), owner(ent.owner) {};
+
+	    const dirent& get() const { return *data;};
+	    const dirent& operator *() const { return get();};
+
+	    entry& operator =(const entry& oth) { data = oth.data; owner = oth.owner; return *this;};
+
+	    entry& operator ++() { data = owner->read_raw(); return *this;};
+	    friend bool operator ==(const entry&, const entry&);
+	    friend bool operator ==(const entry&, nullptr_t nil);
+	    friend bool operator ==(nullptr_t nil, const entry&);
+
+	private:
+	    dirent *data = nullptr;	//< pointer to directory entry data6 returned the readdir()
+	    Directory *owner;		// owner of this
+	}; /* directory::entry */
+
+    private:
+	struct dirent* read_raw() { return readdir(dir); };
+
+	std::string dirname;
+	DIR *dir = nullptr;	//!< Directory descriptor
+	int err = 0;
+    }; /* class Directory */
+
+
+    bool inline operator ==(const Directory::entry& it, const Directory::entry& other) {
+	return (it.owner == other.owner) && (it.data == other.data); };
+    bool inline operator ==(const Directory::entry& it, nullptr_t nil) { return it.data == nil; };
+    bool inline operator ==(nullptr_t nil, const Directory::entry& it) { return it == nil; };
+
+//    bool inline operator !=(const Directory::entry& it, const Directory::entry& other) { return !(it == other); };
+//    bool inline operator !=(const Directory::entry& it, nullptr_t nil) { return !(it == nil); };
+//    bool inline operator !=(nullptr_t nil, const Directory::entry& it) { return it != nil; };
+
+
 }; // namespace fs ----------------------------------------------------------------------------------------------------
+
 
 
 namespace Exec //------------------------------------------------------------------------------------------------------
@@ -93,7 +165,7 @@ namespace Exec //---------------------------------------------------------------
 
 	/// Return std::string, contens the directory parts delimiter
 	/*constexpr*/ std::string delimiter() const { return std::string(delim_ch, 1); };
-	/// Desoignation of the parent directory
+	/// Designation of the parent directory
 	constexpr const std::string& parent() const { return parent_str; };
 	/// Desoignation of the current directory
 	constexpr const std::string& current() const { return current_str; };
@@ -104,7 +176,7 @@ namespace Exec //---------------------------------------------------------------
 	{
 	public:
 	    int static state() { return err; };
-	    bool static is_exist() { return err == 0;};
+	    bool static exist() { return err == 0;};
 
 	    bool static is_link() { return S_ISLNK(statbuf.st_mode); };
 	    bool static is_reg()  { return S_ISREG(statbuf.st_mode); };
@@ -113,6 +185,11 @@ namespace Exec //---------------------------------------------------------------
 	    bool static is_block(){ return S_ISBLK(statbuf.st_mode); };
 	    bool static is_fifo() { return S_ISFIFO(statbuf.st_mode); };
 	    bool static is_soscket() { return S_ISSOCK(statbuf.st_mode); };
+
+	    /// Type of the last path, that was operated
+	    static const char* type() { return statmode2txt(statbuf); };
+	    /// Size of the last operated file - in bytes
+	    off_t static size() { return statbuf.st_size; };
 	}; /* class last */
 
 

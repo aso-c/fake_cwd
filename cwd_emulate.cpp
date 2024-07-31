@@ -4,8 +4,8 @@
  * 	@file	cwd_emulate.cpp
  *	@author	(Solomatov A.A. (aso)
  *	@date Created 27.04.2024
- *	      Updated 29.07.2024
- *	@version 1.0
+ *	      Updated 31.07.2024
+ *	@version 1.1
  */
 
 
@@ -110,6 +110,7 @@ namespace Exec	//---------------------------------------------------------------
 	{
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
 		    "\t\t\t\tcurrent directory was not changing", path.c_str());
+	    err = ESP_ERR_NOT_FOUND;
 	    return ESP_ERR_NOT_FOUND;
 	}; /* if stat(path.c_str(), &statbuf) == -1 */
 	ESP_LOGD("EXEC::CWD::change", "to %s which is a %s\n", path.c_str(),
@@ -118,6 +119,7 @@ namespace Exec	//---------------------------------------------------------------
 	{
 	    ESP_LOGE("EXEC::CWD::change", "Change dir is failed - requested path to change \"%s\" is not directory;\n"
 		    "\t\t\t\tleave current directory without changing", path.c_str());
+	    err = ESP_ERR_NOT_SUPPORTED;
 	    return ESP_ERR_NOT_SUPPORTED;
 	}; /* if !S_ISDIR(statbuf.st_mode) */
 
@@ -125,6 +127,7 @@ final:
 	// set current pwd value at the final
 	set(path);
 
+	err = ESP_OK;
 	return ESP_OK;
 
     }; /* CWD::change() */
@@ -168,7 +171,7 @@ final:
     /// and return 'false' in this case
     bool CWD::valid(std::string path)
     {
-//	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
+	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
 
 	ESP_LOGD("CWD::valid()", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
 
@@ -185,15 +188,18 @@ final:
 	{
 	    ESP_LOGD("CWD::valid()", "current char from the path is: '%c', sign::ctrl is %2X, sign::cnt = %u", scan,
 					(unsigned)sign.ctrl, sign.cnt);
+	    ESP_LOGD("CWD::valid()", "==== current scanning part of path is: %s", path.substr(0, &scan - path.data() + 1).c_str());
+
+		std::string curr;
 	    switch (scan)
 	    {
 	    // decision point
 	    case '/':
 	    //case delim_ch:
 
-		compose(path.substr(0, &scan - path.data()));	// Check the processed part path is exist or a not
+		curr = compose(path.substr(0, &scan - path.data() + 1));	// Check the processed part path is exist or a not
 
-		ESP_LOGD("CWD::valid()", "###### Solution point: current path char is '/' ######");
+		ESP_LOGD("CWD::valid()", "###### Decision point: current path is \"%s\", current char is '%c' ######", curr.c_str(), scan);
 		switch (sign.ctrl)
 		{
 		// initial state - nothing to do
@@ -223,7 +229,8 @@ final:
 			ESP_LOGD("CWD::valid()", "3 point or more sequence is present in current substring - invalid sequence, return");
 			return false;
 		    };
-		    ESP_LOGD("CWD::valid()", "====== The %u point sequence in the current meaning substring, ctrl_cnt is %2X, test current subpath for existing ======", sign.cnt, sign.ctrl);
+		    ESP_LOGD("CWD::valid()", "====== The %u point sequence at the current substring \"%s\", ctrl_cnt is %2X, test current subpath for existing ======",
+				sign.cnt, curr.c_str(), sign.ctrl);
 //		    break;
 		    [[fallthrough]];
 
@@ -235,30 +242,36 @@ final:
 		    switch (sign.phase)
 		    {
 		    case mark::tag::base:	// only for alphabetical or mixed basename, for 'point' char - interceped
-		        sign.phase = CWD::last::exist()? mark::tag::mandatory: mark::tag::optional;
+			ESP_LOGD("CWD::valid()", "------ The mark::tag::base phase point");
+		        sign.phase = (CWD::last::exist() || is_root(curr))? mark::tag::mandatory: mark::tag::optional;
 		        break;
 
 		    case mark::tag::optional:
+			ESP_LOGD("CWD::valid()", "~~~~~~ The mark::tag::optional phase: subpath must be unexist or must be is directory");
 			// subpath must be unexist or must be is directory
-		        if (CWD::last::exist())
+			if (is_root(curr))	// intercept the 'root' case - root is exist always!!! Asign phase as "mandatiry"
+			    sign.phase = mark::tag::mandatory;
+			else if (CWD::last::exist())
 		        {
 		            if (CWD::last::is_dir())
 		        	sign.phase = mark::tag::mandatory;
 		            else
 		        	return false;
-		        }
+		        }; /* if CWD::last::exist() */
 		        break;
 
 		    case mark::tag::mandatory:
-			// subpath must be exist && must be is directory
+			ESP_LOGD("CWD::valid()", "****** The mark::tag::mandatory phase: subpath must be exist && must be is directory or must be is root");
+			// subpath must be exist && must be is directory or must be is root
+			if (is_root(curr))	// intercept the 'root' case - delete check the existing
+			    break;
 		        if (!CWD::last::exist() || !CWD::last::is_dir())
 		            return false;
 
 		    }; /* switch sign.phase */
-		    ;
+
 		}; /* switch sign.ctrl */
 
-		//ESP_LOGD("CWD::valid()", "### Testing the current substring \"%s\" for existing ###", compose(path.substr(0, &scan - path.data())).c_str());
 		sign.ctrl = mark::slash;
 		break;
 

@@ -4,10 +4,14 @@
  * 	@file	cwd_emulate.cpp
  *	@author	(Solomatov A.A. (aso)
  *	@date Created 27.04.2024
- *	      Updated 29.07.2024
- *	Version	1.0
+ *	      Updated 31.07.2024
+ *	@version 1.1
  */
 
+
+
+
+//#define LOG_LOCAL_LEVEL ESP_LOG_DEBUG	// 4 - set 'DEBUG' logging level
 
 #include <limits>
 #include <cstdio>
@@ -23,7 +27,9 @@
 #include <esp_log.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+//#include <unistd.h>
 #include <regex>
+//#include <fcntl.h>
 #include <dirent.h>
 
 #include <esp_vfs_fat.h>
@@ -48,6 +54,7 @@ namespace Exec	//---------------------------------------------------------------
 
     //--[ class Exec::CWD ]--------------------------------------------------------------------------------------------
 
+
     // compose the full path from the current directory with addition specified part of the passed path
     // return full path appling current dir, use desired part of the passed path
     // return current dir (if path == NULL or "") or generate fullpath for sended path
@@ -56,15 +63,20 @@ namespace Exec	//---------------------------------------------------------------
     {
 	// drop trailing & leading spaces
 	path = astr::trim(std::move(path));
+	ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path.c_str());
 
 	if (path.empty())
 	    return get();	//< path is empty - return current cwd
 	// argument - absolute path
 	if (fs::absolute_path(path))
-	    path = std::string(freewrapper<char>(realpath(path.c_str(), NULL)));
+	    path = std::string(freewrapper<char>(realpath(path.c_str(), /*std::nullptr*/ NULL)));
 	else
-	    // relative path - finalize processing: refine the path: add leading slash & remove tailing slash
-	    path = std::string(freewrapper<char>(realpath((get() + CWD::refine(path)).c_str(), NULL)));
+	{
+	    // relative path - finalize processing
+	    ESP_LOGD(__PRETTY_FUNCTION__, "processing relative path: updating path on top of the current pwd");
+	    // refine the path: add leading slash & remove tailing slash
+	    path = std::string(freewrapper<char>(realpath((get() + CWD::refine(path)).c_str(), /*std::nullptr*/ NULL)));
+	}; /* else if fs::absolute_path(path) */
 
 	/// Check, the path is exist?
 	if (stat(path.c_str(), &CWD::statbuf) == 0)
@@ -80,7 +92,11 @@ namespace Exec	//---------------------------------------------------------------
     esp_err_t CWD::change(std::string path)
     {
 
+//	esp_log_level_set("EXEC::CWD::change", ESP_LOG_DEBUG);	/* for debug purposes */
+
+	ESP_LOGD("EXEC::CWD::change", "Original value of the \"path\" parameter is: \"%s\"", path.c_str());
 	path = compose(std::move(path));
+	ESP_LOGD("EXEC::CWD::change", "Composed value of the \"path\" parameter is: \"%s\"", path.c_str());
 
 	if (path.empty())
 	{
@@ -94,13 +110,16 @@ namespace Exec	//---------------------------------------------------------------
 	{
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
 		    "\t\t\t\tcurrent directory was not changing", path.c_str());
+	    err = ESP_ERR_NOT_FOUND;
 	    return ESP_ERR_NOT_FOUND;
 	}; /* if stat(path.c_str(), &statbuf) == -1 */
-
+	ESP_LOGD("EXEC::CWD::change", "to %s which is a %s\n", path.c_str(),
+		statmode2txt(CWD::statbuf));
 	if (!last::is_dir())
 	{
 	    ESP_LOGE("EXEC::CWD::change", "Change dir is failed - requested path to change \"%s\" is not directory;\n"
 		    "\t\t\t\tleave current directory without changing", path.c_str());
+	    err = ESP_ERR_NOT_SUPPORTED;
 	    return ESP_ERR_NOT_SUPPORTED;
 	}; /* if !S_ISDIR(statbuf.st_mode) */
 
@@ -108,6 +127,7 @@ final:
 	// set current pwd value at the final
 	set(path);
 
+	err = ESP_OK;
 	return ESP_OK;
 
     }; /* CWD::change() */
@@ -151,23 +171,40 @@ final:
     /// and return 'false' in this case
     bool CWD::valid(std::string path)
     {
+	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
+
+	ESP_LOGD("CWD::valid()", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
+
 	path = astr::trim(std::move(path));
 
 	    size_t base_len = strlen(basename(path.c_str()));
+
+	ESP_LOGD("CWD::valid()", "basename of the path is: \"%s\"", path.c_str() + path.length() - base_len);
+	ESP_LOGD("CWD::valid()", "full path is: \"%s\"", path.c_str());
+	ESP_LOGD("CWD::valid()", "dirname path is: \"%.*s\"", path.length() - base_len, path.c_str());
+
 	    mark sign;
         for (const char &scan: aso::adaptors::constant::reverse(path))
 	{
+	    ESP_LOGD("CWD::valid()", "current char from the path is: '%c', sign::ctrl is %2X, sign::cnt = %u", scan,
+					(unsigned)sign.ctrl, sign.cnt);
+	    ESP_LOGD("CWD::valid()", "==== current scanning part of path is: %s", path.substr(0, &scan - path.data() + 1).c_str());
+
+		std::string curr;
 	    switch (scan)
 	    {
 	    // decision point
 	    case '/':
 	    //case delim_ch:
 
-		compose(path.substr(0, &scan - path.data()));	// Check the processed part path is exist or a not
+		curr = compose(path.substr(0, &scan - path.data() + 1));	// Check the processed part path is exist or a not
+
+		ESP_LOGD("CWD::valid()", "###### Decision point: current path is \"%s\", current char is '%c' ######", curr.c_str(), scan);
 		switch (sign.ctrl)
 		{
 		// initial state - nothing to do
 		case mark::init:
+		    ESP_LOGD("CWD::valid()", "++++++ The first pass of the control loop ++++++");
 		    // Check pre-condition path validity
 		    if (path.empty())
 			return true;
@@ -182,43 +219,59 @@ final:
 
 		// double slash - prev symbol is slash
 		case mark::slash:
+		    ESP_LOGD("CWD::valid()", "**** double slash and more - is not valid sequence in the path name ****");
 		    return false;
 
 		case mark::point:
 		    // if more then 3 point sequence in substring
 		    if (sign.cnt > sign.pt_max)
+		    {
+			ESP_LOGD("CWD::valid()", "3 point or more sequence is present in current substring - invalid sequence, return");
 			return false;
+		    };
+		    ESP_LOGD("CWD::valid()", "====== The %u point sequence at the current substring \"%s\", ctrl_cnt is %2X, test current subpath for existing ======",
+				sign.cnt, curr.c_str(), sign.ctrl);
+//		    break;
 		    [[fallthrough]];
 
 		case mark::mixed:
+		    ESP_LOGD("CWD::valid()", "Or mix point & alpha symbol is present in current processing substring - test subpath for exist");
 		    [[fallthrough]];
-
 		default:
 		    // If base part of filename processing
 		    switch (sign.phase)
 		    {
 		    case mark::tag::base:	// only for alphabetical or mixed basename, for 'point' char - interceped
-		        sign.phase = CWD::last::exist()? mark::tag::mandatory: mark::tag::optional;
+			ESP_LOGD("CWD::valid()", "------ The mark::tag::base phase point");
+		        sign.phase = (CWD::last::exist() || is_root(curr))? mark::tag::mandatory: mark::tag::optional;
 		        break;
 
 		    case mark::tag::optional:
+			ESP_LOGD("CWD::valid()", "~~~~~~ The mark::tag::optional phase: subpath must be unexist or must be is directory");
 			// subpath must be unexist or must be is directory
-		        if (CWD::last::exist())
+			if (is_root(curr))	// intercept the 'root' case - root is exist always!!! Asign phase as "mandatiry"
+			    sign.phase = mark::tag::mandatory;
+			else if (CWD::last::exist())
 		        {
 		            if (CWD::last::is_dir())
 		        	sign.phase = mark::tag::mandatory;
 		            else
 		        	return false;
-		        }
+		        }; /* if CWD::last::exist() */
 		        break;
 
 		    case mark::tag::mandatory:
-			// subpath must be exist && must be is directory
+			ESP_LOGD("CWD::valid()", "****** The mark::tag::mandatory phase: subpath must be exist && must be is directory or must be is root");
+			// subpath must be exist && must be is directory or must be is root
+			if (is_root(curr))	// intercept the 'root' case - delete check the existing
+			    break;
 		        if (!CWD::last::exist() || !CWD::last::is_dir())
 		            return false;
+
 		    }; /* switch sign.phase */
 
 		}; /* switch sign.ctrl */
+
 		sign.ctrl = mark::slash;
 		break;
 
@@ -287,6 +340,7 @@ final:
 		    sign.ctrl = mark::alpha;
 		}; /* switch (sign_ctrl) */
 
+		ESP_LOGD("CWD::valid()", "%d symbol of the processing substring, symbol is \"%c\"", sign.cnt, scan);
 	    }; /* switch *scan */
 
 	}; /* for const char &scan: aso::adaptors::constant::reverse(path, base_len + 1) */

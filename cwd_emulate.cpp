@@ -101,7 +101,7 @@ namespace Exec	//---------------------------------------------------------------
 	if (path.empty())
 	{
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed");
-	    return ESP_FAIL;
+	    return err = (ESP_FAIL);
 	}; /* if astr::is_space(path) */
 	// if dir changed to root - exclusively change dir
 	if (is_root(path))
@@ -110,8 +110,7 @@ namespace Exec	//---------------------------------------------------------------
 	{
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
 		    "\t\t\t\tcurrent directory was not changing", path.c_str());
-	    err = ESP_ERR_NOT_FOUND;
-	    return ESP_ERR_NOT_FOUND;
+	    return (err = ESP_ERR_NOT_FOUND);
 	}; /* if stat(path.c_str(), &statbuf) == -1 */
 	ESP_LOGD("EXEC::CWD::change", "to %s which is a %s\n", path.c_str(),
 		statmode2txt(CWD::statbuf));
@@ -119,8 +118,7 @@ namespace Exec	//---------------------------------------------------------------
 	{
 	    ESP_LOGE("EXEC::CWD::change", "Change dir is failed - requested path to change \"%s\" is not directory;\n"
 		    "\t\t\t\tleave current directory without changing", path.c_str());
-	    err = ESP_ERR_NOT_SUPPORTED;
-	    return ESP_ERR_NOT_SUPPORTED;
+	    return (err = ESP_ERR_NOT_SUPPORTED);
 	}; /* if !S_ISDIR(statbuf.st_mode) */
 
 final:
@@ -171,7 +169,7 @@ final:
     /// and return 'false' in this case
     bool CWD::valid(std::string path)
     {
-	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
+//	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
 
 	ESP_LOGD("CWD::valid()", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
 
@@ -307,7 +305,7 @@ final:
 		default:
 		    sign.cnt = 1;
 		    sign.ctrl = mark::point;
-		}; /* switch (sign_ctrl) */
+		}; /* switch (sign.ctrl) */
 		break;
 
 		// all other symbols - it's "alpha"
@@ -338,12 +336,12 @@ final:
 		default:
 		    sign.cnt = 1;
 		    sign.ctrl = mark::alpha;
-		}; /* switch (sign_ctrl) */
+		}; /* switch (sign.ctrl) */
 
 		ESP_LOGD("CWD::valid()", "%d symbol of the processing substring, symbol is \"%c\"", sign.cnt, scan);
-	    }; /* switch *scan */
+	    }; /* switch scan */
 
-	}; /* for const char &scan: aso::adaptors::constant::reverse(path, base_len + 1) */
+	}; /* for const char &scan: aso::adaptors::constant::reverse(path) */
 
 	return true;
     }; /* CWD::valid() */

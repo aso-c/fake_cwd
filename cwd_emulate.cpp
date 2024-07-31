@@ -1,11 +1,11 @@
 /*!
  * @brief Emulate "current directory" path for operating with file system
  * Implementation file
- * 	@file	cwd_emulate
+ * 	@file	cwd_emulate.cpp
  *	@author	(Solomatov A.A. (aso)
  *	@date Created 27.04.2024
- *	      Updated 19.07.2024
- *	Version	0.9
+ *	      Updated 29.07.2024
+ *	@version 1.0
  */
 
 
@@ -55,16 +55,6 @@ namespace Exec	//---------------------------------------------------------------
     //--[ class Exec::CWD ]--------------------------------------------------------------------------------------------
 
 
-//    // get current dir (if path == NULL or "") or generate fullpath for sended path
-//    // absent trailing slash in returned string is guaranteed
-//
-//    // return current pwd (current dir) only
-//    const std::string& CWD::get() const
-//    {
-//	return pwd;
-//    }; /* char* CWD::get() */
-
-
     // compose the full path from the current directory with addition specified part of the passed path
     // return full path appling current dir, use desired part of the passed path
     // return current dir (if path == NULL or "") or generate fullpath for sended path
@@ -101,7 +91,6 @@ namespace Exec	//---------------------------------------------------------------
     /// change cwd dir
     esp_err_t CWD::change(std::string path)
     {
-	    //struct stat statbuf;
 
 //	esp_log_level_set("EXEC::CWD::change", ESP_LOG_DEBUG);	/* for debug purposes */
 
@@ -109,7 +98,6 @@ namespace Exec	//---------------------------------------------------------------
 	path = compose(std::move(path));
 	ESP_LOGD("EXEC::CWD::change", "Composed value of the \"path\" parameter is: \"%s\"", path.c_str());
 
-//	if (astr::is_space(path))
 	if (path.empty())
 	{
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed");
@@ -147,8 +135,6 @@ final:
     {
     public:
 
-//	mark(): ctrl(init), cnt(0) {};
-
 	/// marker id of the parced char enum
 	enum id {
 	    init  = 0x0,	/*!< the initial state */
@@ -182,10 +168,9 @@ final:
     /// and return 'false' in this case
     bool CWD::valid(std::string path)
     {
-	esp_log_level_set("CWD::valid", ESP_LOG_DEBUG);	/* for debug purposes */
-	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
+//	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
 
-	ESP_LOGD("CWD::valid", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
+	ESP_LOGD("CWD::valid()", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
 
 	path = astr::trim(std::move(path));
 
@@ -196,9 +181,9 @@ final:
 	ESP_LOGD("CWD::valid()", "dirname path is: \"%.*s\"", path.length() - base_len, path.c_str());
 
 	    mark sign;
-        for (const char &scan: aso::adaptors::constant::reverse(path/*, base_len + 1*/))
+        for (const char &scan: aso::adaptors::constant::reverse(path))
 	{
-	    ESP_LOGD("CWD::valid()", "current char from the path is: '%c', sign::ctrl is %2X, sign::cnt = %u", /***/scan,
+	    ESP_LOGD("CWD::valid()", "current char from the path is: '%c', sign::ctrl is %2X, sign::cnt = %u", scan,
 					(unsigned)sign.ctrl, sign.cnt);
 	    switch (scan)
 	    {
@@ -344,13 +329,6 @@ final:
 
 		ESP_LOGD("CWD::valid()", "%d symbol of the processing substring, symbol is \"%c\"", sign.cnt, scan);
 	    }; /* switch *scan */
-
-	    if (&scan == path.data())
-	    {
-		ESP_LOGD("CWD::valid()", "###### End of sequence processing, first char is reached: additional solution point: current path char is %c ######", scan);
-
-	    }; /* if &scan == &(*path.crend()) */
-
 
 	}; /* for const char &scan: aso::adaptors::constant::reverse(path, base_len + 1) */
 

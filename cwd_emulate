@@ -67,9 +67,6 @@ namespace fs	//-----------------------------------------------------------------
 	void rewind() { rewinddir(dir); };
 	void seek(off_t offset) { seekdir(dir, offset); };
 	off_t tell() { return telldir(dir); };
-	/*int scandir(const char *dir, struct dirent ***namelist,
-			int(*select)(const struct dirent *),
-			int(*compar)(const struct dirent **, const struct dirent **));*/
 
 	entry begin() { if (!dir) open(); return read(); };
 	entry end() { return entry(this, nullptr); };
@@ -111,11 +108,6 @@ namespace fs	//-----------------------------------------------------------------
     bool inline operator ==(const Directory::entry& it, nullptr_t nil) { return it.data == nil; };
     bool inline operator ==(nullptr_t nil, const Directory::entry& it) { return it == nil; };
 
-//    bool inline operator !=(const Directory::entry& it, const Directory::entry& other) { return !(it == other); };
-//    bool inline operator !=(const Directory::entry& it, nullptr_t nil) { return !(it == nil); };
-//    bool inline operator !=(nullptr_t nil, const Directory::entry& it) { return it != nil; };
-
-
 }; // namespace fs ----------------------------------------------------------------------------------------------------
 
 
@@ -130,7 +122,7 @@ namespace Exec //---------------------------------------------------------------
 	CWD(std::string mountpointdef = "", char delim = '/', std::string _parent = "..", std::string _curr = "."):
 	    delim_ch(delim), defmountpoint(CWD::refine(mountpointdef)),
 	    parent_str(std::move(_parent)), current_str(std::move(_curr))
-	{/*esp_log_level_set("CWD_emulating:", ESP_LOG_DEBUG);*//* for debug purposes */};
+	{};
 
 
 	// return current pwd (current dir) only, absent trailing slash in returned string is guaranteed
@@ -165,7 +157,7 @@ namespace Exec //---------------------------------------------------------------
 	CWD& operator /= (const std::string& path) {change(path); return *this;};
 
 	/// Return std::string, contens the directory parts delimiter
-	/*constexpr*/ std::string delimiter() const { return std::string(delim_ch, 1); };
+	std::string delimiter() const { return std::string(delim_ch, 1); };
 	/// Designation of the parent directory
 	constexpr const std::string& parent() const { return parent_str; };
 	/// Desoignation of the current directory

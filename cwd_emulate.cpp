@@ -4,8 +4,8 @@
  * 	@file	cwd_emulate.cpp
  *	@author	(Solomatov A.A. (aso)
  *	@date Created 27.04.2024
- *	      Updated 31.07.2024
- *	@version 1.1
+ *	      Updated 07.08.2024
+ *	@version 1.11
  */
 
 
@@ -169,7 +169,7 @@ final:
     /// and return 'false' in this case
     bool CWD::valid(std::string path)
     {
-//	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
+	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
 
 	ESP_LOGD("CWD::valid()", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
 
@@ -195,9 +195,12 @@ final:
 	    case '/':
 	    //case delim_ch:
 
-		curr = compose(path.substr(0, &scan - path.data() + 1));	// Check the processed part path is exist or a not
+//		curr = compose(path.substr(0, &scan - path.data() + 1));	// Check the processed part path is exist or a not
+		curr = std::string(path.cbegin(), std::string::const_iterator(&scan));
+		ESP_LOGD("CWD::valid()", "###### Decision point: current subpath is \"%s\", current char is '%c' ######", curr.c_str(), scan);
+		curr = compose(std::move(curr));	// Check the processed part path is exist or a not
 
-		ESP_LOGD("CWD::valid()", "###### Decision point: current path is \"%s\", current char is '%c' ######", curr.c_str(), scan);
+		ESP_LOGD("CWD::valid()", "###### Decision point: composed path is \"%s\"                       ######", curr.c_str());
 		switch (sign.ctrl)
 		{
 		// initial state - nothing to do

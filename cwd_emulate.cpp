@@ -5,7 +5,7 @@
  *	@author	(Solomatov A.A. (aso)
  *	@date Created 27.04.2024
  *	      Updated 07.08.2024
- *	@version 1.11
+ *	@version 1.1.1
  */
 
 
@@ -102,7 +102,7 @@ namespace Exec	//---------------------------------------------------------------
 	{
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed");
 	    return err = (ESP_FAIL);
-	}; /* if astr::is_space(path) */
+	}; /* if path.empty() */
 	// if dir changed to root - exclusively change dir
 	if (is_root(path))
 	    goto final;
@@ -111,7 +111,7 @@ namespace Exec	//---------------------------------------------------------------
 	    ESP_LOGE("CWD_emulating::change_dir", "Change dir is failed - requested path to change \"%s\" is not exist;\n"
 		    "\t\t\t\tcurrent directory was not changing", path.c_str());
 	    return (err = ESP_ERR_NOT_FOUND);
-	}; /* if stat(path.c_str(), &statbuf) == -1 */
+	}; /* if !last::exist() */
 	ESP_LOGD("EXEC::CWD::change", "to %s which is a %s\n", path.c_str(),
 		statmode2txt(CWD::statbuf));
 	if (!last::is_dir())
@@ -119,7 +119,7 @@ namespace Exec	//---------------------------------------------------------------
 	    ESP_LOGE("EXEC::CWD::change", "Change dir is failed - requested path to change \"%s\" is not directory;\n"
 		    "\t\t\t\tleave current directory without changing", path.c_str());
 	    return (err = ESP_ERR_NOT_SUPPORTED);
-	}; /* if !S_ISDIR(statbuf.st_mode) */
+	}; /* if !last::is_dir() */
 
 final:
 	// set current pwd value at the final
@@ -169,7 +169,7 @@ final:
     /// and return 'false' in this case
     bool CWD::valid(std::string path)
     {
-	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
+//	esp_log_level_set("CWD::valid()", ESP_LOG_DEBUG);	/* for debug purposes */
 
 	ESP_LOGD("CWD::valid()", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
 
@@ -195,7 +195,6 @@ final:
 	    case '/':
 	    //case delim_ch:
 
-//		curr = compose(path.substr(0, &scan - path.data() + 1));	// Check the processed part path is exist or a not
 		curr = std::string(path.cbegin(), std::string::const_iterator(&scan));
 		ESP_LOGD("CWD::valid()", "###### Decision point: current subpath is \"%s\", current char is '%c' ######", curr.c_str(), scan);
 		curr = compose(std::move(curr));	// Check the processed part path is exist or a not
@@ -232,7 +231,6 @@ final:
 		    };
 		    ESP_LOGD("CWD::valid()", "====== The %u point sequence at the current substring \"%s\", ctrl_cnt is %2X, test current subpath for existing ======",
 				sign.cnt, curr.c_str(), sign.ctrl);
-//		    break;
 		    [[fallthrough]];
 
 		case mark::mixed:

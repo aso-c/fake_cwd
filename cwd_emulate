@@ -5,7 +5,7 @@
  *	@author	(Solomatov A.A. (aso)
  *	@date Created 27.04.2024
  *	      Updated 07.08.2024
- *	@version 1.11
+ *	@version 1.1.1
  */
 
 
@@ -200,7 +200,6 @@ namespace Exec //---------------------------------------------------------------
 
     }; /* class Exec::CWD */
 
-//    inline std::string operator + (const CWD_emulating& cwd, const std::string& path) {return cwd.compose(path);};
     inline std::string operator / ( const CWD& cwd, std::string path) {return cwd.compose(path);};
 
 }; //--[ namespace Exec ]----------------------------------------------------------------------------------------------

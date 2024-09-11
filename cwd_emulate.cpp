@@ -62,7 +62,7 @@ namespace Exec	//---------------------------------------------------------------
     std::string CWD::compose(std::string path) const
     {
 	// drop trailing & leading spaces
-	path = astr::trim(std::move(path));
+	astr::trim(path);
 	ESP_LOGD(__PRETTY_FUNCTION__, "\"path\" argument is %s", path.c_str());
 
 	if (path.empty())
@@ -173,7 +173,7 @@ final:
 
 	ESP_LOGD("CWD::valid()", "==== Call the Exec::CWD::valid(std::string) procedure, std::string own value version ===");
 
-	path = astr::trim(std::move(path));
+	astr::trim(path);
 
 	    size_t base_len = strlen(basename(path.c_str()));
 

@@ -14,7 +14,7 @@
 
 
 #ifndef __cplusplus
-#error "The sdcard_ctrl file usable in C++ projects only."
+#error "The cwd_emulate file is usable in C++ projects only."
 #endif
 
 
